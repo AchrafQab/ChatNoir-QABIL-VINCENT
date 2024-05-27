@@ -1,9 +1,8 @@
 package fr.uge.chatnoir.server;
 
-import fr.uge.chatnoir.readers.PrivateMessage;
+import fr.uge.chatnoir.protocol.Message;
 import org.junit.jupiter.api.Test;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Queue;

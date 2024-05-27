@@ -1,7 +1,6 @@
 package fr.uge.chatnoir.readers;
 
-import fr.uge.chatnoir.readers.IntReader;
-import fr.uge.chatnoir.readers.Reader;
+import fr.uge.chatnoir.protocol.Reader;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;

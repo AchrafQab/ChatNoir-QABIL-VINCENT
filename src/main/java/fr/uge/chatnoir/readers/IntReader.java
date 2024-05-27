@@ -1,6 +1,6 @@
 package fr.uge.chatnoir.readers;
 
-import fr.uge.chatnoir.readers.Reader;
+import fr.uge.chatnoir.protocol.Reader;
 
 import java.nio.ByteBuffer;
 

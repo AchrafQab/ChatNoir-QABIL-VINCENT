@@ -1,10 +1,8 @@
 package fr.uge.chatnoir.readers;
 
-import fr.uge.chatnoir.server.Message;
+import fr.uge.chatnoir.protocol.Reader;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 
 public class opReader implements Reader<Integer> {
 

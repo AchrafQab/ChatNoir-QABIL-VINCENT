@@ -1,6 +1,8 @@
 package fr.uge.chatnoir.server;
 
 import fr.uge.chatnoir.client.SharedFileRegistry;
+import fr.uge.chatnoir.protocol.Message;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
@@ -39,6 +41,7 @@ public class Server {
                 doAccept(key);
             }
             if (key.isValid() && key.isReadable()) {
+
                 ((ClientSession) key.attachment()).doRead();
             }
             if (key.isValid() && key.isWritable()) {
@@ -72,7 +75,9 @@ public class Server {
     }
 
     public boolean registerClient(String nickname, ClientSession session) {
+
         synchronized (lock) {
+            System.out.println("register ==> "+nickname);
             if (clients.containsKey(nickname)) {
                 return false;
             }
@@ -83,6 +88,7 @@ public class Server {
 
     public void unregisterClient(String nickname) {
         synchronized (lock) {
+            System.out.println("remove ==> "+nickname);
             clients.remove(nickname);
             fileRegistry.remove(nickname);
         }
@@ -91,7 +97,7 @@ public class Server {
     public void broadcast(String message, String sender) {
         synchronized (lock) {
             for (ClientSession client : clients.values()) {
-                client.queueMessage(new Message(sender, message));
+                client.queueMessage(new Message(message));
             }
         }
     }
@@ -100,7 +106,7 @@ public class Server {
         synchronized (lock) {
             ClientSession client = clients.get(recipient);
             if (client != null) {
-                client.queueMessage(new Message(sender, "Private from " + sender + ": " + message));
+                client.queueMessage(new Message(message));
             }
         }
     }

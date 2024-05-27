@@ -1,15 +1,17 @@
 package fr.uge.chatnoir.readers;
 
+import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.AuthTrame;
+
 import java.nio.ByteBuffer;
 
 public class AuthRequestReader implements Reader<String> {
 
-    private enum State { DONE, WAITING_LENGTH, WAITING_NICKNAME, WAITING_RESPONSE, ERROR }
-    private State state = State.WAITING_LENGTH;
-    private final IntReader intReader = new IntReader();
+    private enum State { DONE, WAITING_NICKNAME, ERROR }
+    private State state = State.WAITING_NICKNAME;
     private final StringReader stringReader = new StringReader();
-    private int length;
-    private int responseCode;
+    private AuthTrame auth;
+    private String login;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -17,43 +19,24 @@ public class AuthRequestReader implements Reader<String> {
             throw new IllegalStateException();
         }
 
-        switch (state) {
-            case WAITING_LENGTH:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    length = intReader.get();
-                    if (length <= 0 || length > 1024) {
-                        state = State.ERROR;
-                        return ProcessStatus.ERROR;
-                    }
-                    stringReader.reset();
-                    state = State.WAITING_NICKNAME;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
+        if(state == State.WAITING_NICKNAME){
+            var read = stringReader.process(buffer);
+            if(read == ProcessStatus.ERROR){
+                state= State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if(read == ProcessStatus.REFILL){
+                return ProcessStatus.REFILL;
+            }
 
-            case WAITING_NICKNAME:
-                if (stringReader.process(buffer) == ProcessStatus.DONE) {
-                    state = State.WAITING_RESPONSE;
-                    intReader.reset();
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
+            login = stringReader.get();
+            stringReader.reset();
 
-            case WAITING_RESPONSE:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    responseCode = intReader.get();
-                    state = State.DONE;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
 
-            default:
-                throw new IllegalStateException();
         }
 
+
+        state = State.DONE;
         return ProcessStatus.DONE;
     }
 
@@ -62,15 +45,13 @@ public class AuthRequestReader implements Reader<String> {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
-        return stringReader.get() + " Response Code: " + responseCode;
+        return stringReader.get();
     }
 
     @Override
     public void reset() {
-        state = State.WAITING_LENGTH;
-        intReader.reset();
+        state = State.WAITING_NICKNAME;
         stringReader.reset();
-        length = 0;
-        responseCode = 0;
+
     }
 }

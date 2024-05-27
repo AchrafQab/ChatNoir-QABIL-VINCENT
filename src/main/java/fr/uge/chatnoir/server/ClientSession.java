@@ -1,7 +1,9 @@
 package fr.uge.chatnoir.server;
 
+import fr.uge.chatnoir.protocol.Trame;
+import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.Reader;
 import fr.uge.chatnoir.readers.*;
-import fr.uge.chatnoir.protocol.ChatMessageProtocol;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,7 +38,7 @@ public class ClientSession {
 
 
 
-    private final Reader<Frame> frameReader = new FrameReader();
+    private final Reader<Trame> frameReader = new FrameReader();
 
     public ClientSession(Server server, SelectionKey key, SocketChannel sc) {
         this.server = server;
@@ -48,10 +50,12 @@ public class ClientSession {
         bufferIn.clear();
         int read = sc.read(bufferIn);
         if (read == -1) {
+
             server.unregisterClient(nickname);
             sc.close();
             return;
         }
+
         processIn();
     }
 
@@ -69,10 +73,9 @@ public class ClientSession {
                 case DONE:
 
                     var value = frameReader.get();
-                    // server.broadcast(value);
-                    //ToDo use frame reader
-                    // create class Frame
+
                     System.out.println("Frame ==> "+value);
+                    System.out.println("protocol ==> "+value.protocol());
                     frameReader.reset();
 
                     return;
@@ -96,15 +99,15 @@ public class ClientSession {
     private void handleAuthRequest(String nickname) {
         this.nickname = nickname;
         registered = server.registerClient(nickname, this);
-        if (!registered) {
+        /*if (!registered) {
             queueMessage(new Message("Server", "ERROR: Pseudonyme already in use."));
         } else {
             queueMessage(new Message("Server", "Welcome " + nickname + "!"));
-        }
+        }*/
     }
 
     private void handleBroadcastMessage(Message message) {
-        server.broadcast(message.text(), nickname);
+        server.broadcast(message.message(), nickname);
     }
 
     private void handlePrivateMessage(String recipient, String message) {

@@ -1,5 +1,7 @@
 package fr.uge.chatnoir.readers;
 
+import fr.uge.chatnoir.protocol.Reader;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;

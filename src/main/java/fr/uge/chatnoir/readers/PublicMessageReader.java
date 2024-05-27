@@ -1,13 +1,14 @@
 package fr.uge.chatnoir.readers;
 
-import fr.uge.chatnoir.server.Message;
+import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.Message;
 
 import java.nio.ByteBuffer;
 
 public class PublicMessageReader implements Reader<Message> {
-    private enum State { DONE, WAITING_LOGIN, WAITING_MESSAGE, ERROR }
+    private enum State { DONE, WAITING_MESSAGE, ERROR }
 
-    private State state = State.WAITING_LOGIN;
+    private State state = State.WAITING_MESSAGE;
     private final IntReader intReader = new IntReader();
     private final StringReader stringReader = new StringReader();
     private int length;
@@ -21,21 +22,6 @@ public class PublicMessageReader implements Reader<Message> {
             throw new IllegalStateException();
         }
 
-        if(state == State.WAITING_LOGIN){
-            var read = stringReader.process(buffer);
-            if(read == ProcessStatus.ERROR){
-                state=State.ERROR;
-                return ProcessStatus.ERROR;
-            }
-            if(read == ProcessStatus.REFILL){
-                return ProcessStatus.REFILL;
-            }
-
-            login = stringReader.get();
-            stringReader.reset();
-
-            state = State.WAITING_MESSAGE;
-        }
 
         if(state == State.WAITING_MESSAGE){
             var read = stringReader.process(buffer);
@@ -48,13 +34,14 @@ public class PublicMessageReader implements Reader<Message> {
             }
 
             message = stringReader.get();
+            System.out.println("msg ==> "+message);
             stringReader.reset();
 
         }
-        System.out.println("login ==> "+login);
-        System.out.println("message ==> "+message);
+       // System.out.println("login ==> "+login);
+       // System.out.println("message ==> "+message);
 
-        value = new Message(login, message);
+        value = new Message(message);
         state = State.DONE;
         return ProcessStatus.DONE;
     }
@@ -69,7 +56,7 @@ public class PublicMessageReader implements Reader<Message> {
 
     @Override
     public void reset() {
-        state = State.WAITING_LOGIN;
+        state = State.WAITING_MESSAGE;
         intReader.reset();
         stringReader.reset();
         length = 0;

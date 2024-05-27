@@ -1,8 +1,10 @@
 package fr.uge.chatnoir.client;
 
+import fr.uge.chatnoir.protocol.Trame;
+import fr.uge.chatnoir.protocol.AuthTrame;
 import fr.uge.chatnoir.readers.PublicMessageReader;
-import fr.uge.chatnoir.readers.Reader;
-import fr.uge.chatnoir.server.Message;
+import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.Message;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -27,10 +29,11 @@ public class Client {
         private final SocketChannel sc;
         private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
         private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
-        private final ArrayDeque<Message> queue = new ArrayDeque<>();
+        private final ArrayDeque<Trame> queue = new ArrayDeque<>();
         private Charset UTF8 = StandardCharsets.UTF_8;
         private final PublicMessageReader publicMessageReader = new PublicMessageReader();
         private boolean closed = false;
+
 
         private Context(SelectionKey key) {
             this.key = key;
@@ -50,10 +53,12 @@ public class Client {
                 Reader.ProcessStatus status = publicMessageReader.process(bufferIn);
                 switch (status) {
                     case DONE:
-                        var value = publicMessageReader.get();
-                        System.out.println("login : "+value.login()+" message : "+value.text());
+                        /*var value = publicMessageReader.get();
+                        System.out.println("login : "+" message : "+value.message());
+                        */
+                        System.out.println("test");
                         publicMessageReader.reset();
-                        break;
+                        return;
                     case REFILL:
                         return;
                     case ERROR:
@@ -67,11 +72,11 @@ public class Client {
         /**
          * Add a message to the message queue, tries to fill bufferOut and updateInterestOps
          *
-         * @param msg
+         * @param trame
          */
-        private void queueMessage(Message msg) {
+        private void queueTrame(Trame trame) {
             // TODO
-            queue.add(msg);
+            queue.add(trame);
             processOut();
             updateInterestOps();
 
@@ -86,12 +91,12 @@ public class Client {
             // TODO
 
             while (!queue.isEmpty()) {
-                Message msg = queue.peek();
-                var bbMsg = msg.toByteBuffer(UTF8);
+                var trame = queue.peek();
+                var bbMsg = trame.toByteBuffer(UTF8);
                 if(bufferOut.remaining() >= bbMsg.remaining()) {
-                    msg = queue.poll();
-                    System.out.println("==> "+msg);
-                    bufferOut.putInt(2);
+                    queue.poll();
+                    System.out.println("==> "+trame +" -- "+trame.protocol());
+                    bufferOut.putInt(trame.protocol());
                     bufferOut.put(bbMsg);
 
                 }else {
@@ -149,6 +154,7 @@ public class Client {
         private void doRead() throws IOException {
             // TODO
             closed = (sc.read(bufferIn)) == -1;
+            System.out.println("do read");
             processIn();
             updateInterestOps();
         }
@@ -164,6 +170,7 @@ public class Client {
 
         private void doWrite() throws IOException {
             // TODO
+            System.out.println("do write");
             bufferOut.flip();
             sc.write(bufferOut);
             bufferOut.compact();
@@ -176,18 +183,21 @@ public class Client {
             // TODO
             if (!sc.finishConnect())
                 return; // the selector gave a bad hint
+
+
             key.interestOps(SelectionKey.OP_READ);
         }
     }
 
     private static int BUFFER_SIZE = 10_000;
     private static Logger logger = Logger.getLogger(Client.class.getName());
-    private final ArrayBlockingQueue<String> blockQueue = new ArrayBlockingQueue<String>(10);
+    private final ArrayBlockingQueue<Trame> blockQueue = new ArrayBlockingQueue<Trame>(10);
     private final SocketChannel sc;
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final String login;
     private final Thread console;
+    private final Thread auth;
     private Context uniqueContext;
     private final Object lock = new Object();
 
@@ -197,6 +207,14 @@ public class Client {
         this.sc = SocketChannel.open();
         this.selector = Selector.open();
         this.console = Thread.ofPlatform().unstarted(this::consoleRun);
+        this.auth = Thread.ofPlatform().unstarted(() -> {
+            try {
+                sendCommand(new AuthTrame(login));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
     }
 
     private void consoleRun() {
@@ -204,7 +222,7 @@ public class Client {
             try (var scanner = new Scanner(System.in)) {
                 while (scanner.hasNextLine()) {
                     var msg = scanner.nextLine();
-                    sendCommand(msg);
+                    sendCommand(new Message(msg));
                 }
             }
             logger.info("Console thread stopping");
@@ -216,16 +234,16 @@ public class Client {
     /**
      * Send instructions to the selector via a BlockingQueue and wake it up
      *
-     * @param msg
+     * @param trame
      * @throws InterruptedException
      */
 
-    private void sendCommand(String msg) throws InterruptedException {
+    private void sendCommand(Trame trame) throws InterruptedException {
         // TODO
-        Objects.requireNonNull(msg);
+        Objects.requireNonNull(trame);
         synchronized (lock) {
-            System.out.println("send command");
-            blockQueue.add(msg);
+            System.out.println("send command ==> "+trame);
+            blockQueue.add(trame);
             selector.wakeup();
         }
 
@@ -239,9 +257,10 @@ public class Client {
         // TODO
 
         synchronized(lock) {
-            String msg = blockQueue.poll();
-            if(msg != null) {
-                uniqueContext.queueMessage(new Message(login, msg));
+            Trame trame = blockQueue.poll();
+            if(trame != null) {
+                System.out.println("process ==> "+ trame);
+                uniqueContext.queueTrame(trame);
             }
 
         }
@@ -255,10 +274,13 @@ public class Client {
         key.attach(uniqueContext);
         sc.connect(serverAddress);
 
+
+        auth.start();
         console.start();
 
         while (!Thread.interrupted()) {
             try {
+
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {

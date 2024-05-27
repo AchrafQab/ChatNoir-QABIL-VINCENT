@@ -1,7 +1,8 @@
 package fr.uge.chatnoir.readers;
 
+import fr.uge.chatnoir.protocol.Reader;
+
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 public class PrivateMessageReader implements Reader<PrivateMessage> {
     private enum State { DONE, WAITING_RECIPIENT_LENGTH, WAITING_RECIPIENT, WAITING_MESSAGE_LENGTH, WAITING_MESSAGE, ERROR }
