@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Objects;
 
-public record Message(String login, String text) {
+public record Message(String login, String text) implements Frame {
 
     public Message(String login, String text) {
         this.login = Objects.requireNonNull(login);

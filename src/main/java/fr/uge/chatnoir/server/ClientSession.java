@@ -34,7 +34,10 @@ public class ClientSession {
     private final Reader<Void> fileListRequestReader = new FileListRequestReader();
     private final Reader<String> fileDownloadRequestReader = new FileDownloadRequestReader();
 
-    private  final Reader<Integer> opReader = new opReader();
+
+
+    private final Reader<Frame> frameReader = new FrameReader();
+
     public ClientSession(Server server, SelectionKey key, SocketChannel sc) {
         this.server = server;
         this.key = key;
@@ -61,17 +64,18 @@ public class ClientSession {
 
     private void processIn() {
         for (;;) {
-            Reader.ProcessStatus status = opReader.process(bufferIn);
+            Reader.ProcessStatus status = frameReader.process(bufferIn);
             switch (status) {
                 case DONE:
-                    //var value = opReader.get();
+
+                    var value = frameReader.get();
                     // server.broadcast(value);
                     //ToDo use frame reader
                     // create class Frame
-                    System.out.println("==> "+value);
-                   opReader.reset();
+                    System.out.println("Frame ==> "+value);
+                    frameReader.reset();
 
-                    break;
+                    return;
                 case REFILL:
                     return;
                 case ERROR:
