@@ -1,4 +1,4 @@
-package fr.uge.progres;
+package fr.uge.chatnoir.readers;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -6,15 +6,15 @@ import java.nio.charset.StandardCharsets;
 
 public class StringReader implements Reader<String> {
 
-    private enum State {
-        DONE, WAITING_SIZE, WAITING_CONTENT, ERROR
-    };
+    private enum State { DONE, WAITING_INT, WAITING_STRING, ERROR }
 
-    private State state = State.WAITING_SIZE;
-    private final ByteBuffer internalBuffer = ByteBuffer.allocate(Integer.BYTES);
-    private ByteBuffer contentBuffer;
-    private final Charset charset = StandardCharsets.UTF_8;
+    private static final int BUFFER_SIZE = 1024;
+    private State state = State.WAITING_INT;
+    private static final Charset UTF_8 = StandardCharsets.UTF_8;
+    private final ByteBuffer internalBuffer = ByteBuffer.allocate(BUFFER_SIZE); // write-mode
     private String value;
+    private final IntReader intReader = new IntReader();
+    private int size;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -22,42 +22,42 @@ public class StringReader implements Reader<String> {
             throw new IllegalStateException();
         }
 
-        buffer.flip();
-        try {
-            if (state == State.WAITING_SIZE) {
-                while (buffer.hasRemaining() && internalBuffer.hasRemaining()) {
-                    internalBuffer.put(buffer.get());
-                }
-                if (internalBuffer.hasRemaining()) {
-                    return ProcessStatus.REFILL;
-                }
-                internalBuffer.flip();
-                int size = internalBuffer.getInt();
-                if (size > 1024 || size < 0) {
-                    state = State.ERROR;
-                    return ProcessStatus.ERROR;
-                }
-                contentBuffer = ByteBuffer.allocate(size);
-                state = State.WAITING_CONTENT;
+        if (state == State.WAITING_INT) {
+            if (intReader.process(buffer) == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
             }
 
-            if (state == State.WAITING_CONTENT) {
-                while (buffer.hasRemaining() && contentBuffer.hasRemaining()) {
-                    contentBuffer.put(buffer.get());
-                }
-                if (contentBuffer.hasRemaining()) {
-                    return ProcessStatus.REFILL;
-                }
-                contentBuffer.flip();
-                value = charset.decode(contentBuffer).toString();
-                state = State.DONE;
-                return ProcessStatus.DONE;
+            size = intReader.get();
+            if (size < 0 || size > BUFFER_SIZE) {
+                return ProcessStatus.ERROR;
             }
 
-            return ProcessStatus.ERROR;
-        } finally {
-            buffer.compact();
+            state = State.WAITING_STRING;
         }
+
+        if (state == State.WAITING_STRING) {
+            buffer.flip();
+            var missing = size - internalBuffer.position();
+            try {
+                if (buffer.remaining() <= missing) {
+                    internalBuffer.put(buffer);
+                } else {
+                    var tmpLimit = buffer.limit();
+                    buffer.limit(buffer.position() + missing);
+                    internalBuffer.put(buffer);
+                    buffer.limit(tmpLimit);
+                }
+            } finally {
+                buffer.compact();
+            }
+            if (internalBuffer.position() < size) {
+                return ProcessStatus.REFILL;
+            }
+            state = State.DONE;
+            internalBuffer.flip();
+            value = UTF_8.decode(internalBuffer).toString();
+        }
+        return ProcessStatus.DONE;
     }
 
     @Override
@@ -70,11 +70,8 @@ public class StringReader implements Reader<String> {
 
     @Override
     public void reset() {
-        state = State.WAITING_SIZE;
+        state = State.WAITING_INT;
+        intReader.reset();
         internalBuffer.clear();
-        if (contentBuffer != null) {
-            contentBuffer.clear();
-        }
-        value = null;
     }
 }

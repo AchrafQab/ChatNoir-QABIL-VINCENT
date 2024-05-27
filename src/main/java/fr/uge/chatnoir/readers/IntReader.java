@@ -1,12 +1,10 @@
-package fr.uge.progres;
+package fr.uge.chatnoir.readers;
 
 import java.nio.ByteBuffer;
 
 public class IntReader implements Reader<Integer> {
 
-    private enum State {
-        DONE, WAITING, ERROR
-    };
+    private enum State { DONE, WAITING, ERROR }
 
     private State state = State.WAITING;
     private final ByteBuffer internalBuffer = ByteBuffer.allocate(Integer.BYTES); // write-mode

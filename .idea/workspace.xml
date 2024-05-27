@@ -4,29 +4,144 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="432e400d-cb39-4dab-ac90-436212add277" name="Changes" comment="" />
+    <list default="true" id="432e400d-cb39-4dab-ac90-436212add277" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/Main.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/Client.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/FileDownloader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/SharedFileRegistry.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/protocol/ChatMessageProtocol.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/AuthRequestReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileDownloadRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileDownloadRequestReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileListRequestReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileShare.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileShareReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileUnshareReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/IntReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PrivateMessage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PrivateMessageReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PublicMessageReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/Reader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/StringReader.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/ClientSession.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Message.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Server.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/util/Helpers.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/fr/uge/chatnoir/server/ClientSessionTest.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 2
-}]]></component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="2gsBa8KbZAUcJKdtpYhRpEBcsSp" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
+  <component name="RecentsManager">
+    <key name="CreateClassDialog.RecentsKey">
+      <recent name="fr.uge.chatnoir.client" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="fr.uge.chatnoir.readers" />
+      <recent name="fr.uge.chatnoir.server" />
+      <recent name="fr.uge.chatnoir.protocol" />
+      <recent name="fr.uge.chatnoir.readers.base" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.Server">
+    <configuration name="Client" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="fr.uge.chatnoir.client.Client" />
+      <module name="ChatNoir" />
+      <option name="PROGRAM_PARAMETERS" value="achraf" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="fr.uge.chatnoir.client.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Server" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="fr.uge.chatnoir.server.Server" />
+      <module name="ChatNoir" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="fr.uge.chatnoir.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ClientSessionTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="ChatNoir" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="fr.uge.chatnoir.server.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="fr.uge.chatnoir.server" />
+      <option name="MAIN_CLASS_NAME" value="fr.uge.chatnoir.server.ClientSessionTest" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.Client" />
+      <item itemvalue="Application.Server" />
+      <item itemvalue="JUnit.ClientSessionTest" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Client" />
+        <item itemvalue="Application.Server" />
+        <item itemvalue="JUnit.ClientSessionTest" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -35,7 +150,9 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1716476469426</updated>
-      <workItem from="1716476471207" duration="11000" />
+      <workItem from="1716476471207" duration="22943000" />
+      <workItem from="1716717527023" duration="1980000" />
+      <workItem from="1716760660092" duration="8699000" />
     </task>
     <servers />
   </component>
