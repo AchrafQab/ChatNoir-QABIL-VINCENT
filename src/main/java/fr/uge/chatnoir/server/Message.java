@@ -1,30 +1,26 @@
 package fr.uge.chatnoir.server;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.Objects;
 
-public class Message {
-    private final String login;
-    private final String text;
+public record Message(String login, String text) {
 
     public Message(String login, String text) {
         this.login = Objects.requireNonNull(login);
         this.text = Objects.requireNonNull(text);
     }
 
-    public ByteBuffer toByteBuffer() {
-        // Implémentez la méthode pour convertir le message en ByteBuffer
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + login.length() + Integer.BYTES + text.length());
-        buffer.putInt(login.length()).put(login.getBytes()).putInt(text.length()).put(text.getBytes());
+    public ByteBuffer toByteBuffer(Charset charset) {
+        var bufferLogin = charset.encode(login);
+        var bufferMessage = charset.encode(text);
+        var buffer = ByteBuffer.allocate(2*Integer.BYTES + bufferLogin.remaining() + bufferMessage.remaining());
+        buffer.putInt(bufferLogin.remaining());
+        buffer.put(bufferLogin);
+        buffer.putInt(bufferMessage.remaining());
+        buffer.put(bufferMessage);
         buffer.flip();
         return buffer;
     }
 
-    public String getLogin() {
-        return login;
-    }
-
-    public String getText() {
-        return text;
-    }
 }

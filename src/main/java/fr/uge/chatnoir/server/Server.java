@@ -52,6 +52,7 @@ public class Server {
 
     private void doAccept(SelectionKey key) throws IOException {
         SocketChannel sc = serverSocketChannel.accept();
+        System.out.println("new client");
         if (sc == null) {
             return;
         }
