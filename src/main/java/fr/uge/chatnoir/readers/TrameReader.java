@@ -1,16 +1,15 @@
 package fr.uge.chatnoir.readers;
 
 
-import fr.uge.chatnoir.protocol.ChatMessageProtocol;
-import fr.uge.chatnoir.protocol.Trame;
-import fr.uge.chatnoir.protocol.Reader;
-import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.*;
 
 import java.nio.ByteBuffer;
 
-public class FrameReader implements Reader<Trame> {
+public class TrameReader implements Reader<Trame> {
 
     private final Reader<Message> publicMessageReader = new PublicMessageReader();
+    private final Reader<AuthTrame> authRequestReader = new AuthRequestReader();
+
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
     };
@@ -54,6 +53,17 @@ public class FrameReader implements Reader<Trame> {
                         }
                         break;
                     case ChatMessageProtocol.AUTH_REQUEST:
+                       var authRequestReaderState = authRequestReader.process(buffer);
+
+                        if (authRequestReaderState == Reader.ProcessStatus.DONE) {
+                            value = authRequestReader.get();
+                            publicMessageReader.reset();
+                        } else if (authRequestReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return authRequestReaderState;
+                        }
+                        break;
+                    case ChatMessageProtocol.AUTH_RESPONSE:
                        /*var publicMessageReaderState = publicMessageReader.process(buffer);
 
                         if (publicMessageReaderState == Reader.ProcessStatus.DONE) {

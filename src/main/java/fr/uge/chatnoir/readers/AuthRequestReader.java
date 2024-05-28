@@ -5,12 +5,12 @@ import fr.uge.chatnoir.protocol.AuthTrame;
 
 import java.nio.ByteBuffer;
 
-public class AuthRequestReader implements Reader<String> {
+public class AuthRequestReader implements Reader<AuthTrame  > {
 
     private enum State { DONE, WAITING_NICKNAME, ERROR }
     private State state = State.WAITING_NICKNAME;
     private final StringReader stringReader = new StringReader();
-    private AuthTrame auth;
+    private AuthTrame value;
     private String login;
 
     @Override
@@ -35,17 +35,17 @@ public class AuthRequestReader implements Reader<String> {
 
         }
 
-
+        value = new AuthTrame(login);
         state = State.DONE;
         return ProcessStatus.DONE;
     }
 
     @Override
-    public String get() {
+    public AuthTrame get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
-        return stringReader.get();
+        return value;
     }
 
     @Override

@@ -5,6 +5,7 @@ import fr.uge.chatnoir.protocol.AuthTrame;
 import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
 import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.readers.TrameReader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,6 +33,7 @@ public class Client {
         private final ArrayDeque<Trame> queue = new ArrayDeque<>();
         private Charset UTF8 = StandardCharsets.UTF_8;
         private final PublicMessageReader publicMessageReader = new PublicMessageReader();
+        private final Reader<Trame> trameReader = new TrameReader();
         private boolean closed = false;
 
 
@@ -50,7 +52,7 @@ public class Client {
         private void processIn() {
             // TODO
             for (;;) {
-                Reader.ProcessStatus status = publicMessageReader.process(bufferIn);
+                Reader.ProcessStatus status = trameReader.process(bufferIn);
                 switch (status) {
                     case DONE:
                         /*var value = publicMessageReader.get();

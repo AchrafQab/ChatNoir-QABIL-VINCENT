@@ -1,11 +1,10 @@
 package fr.uge.chatnoir.server;
 
-import fr.uge.chatnoir.protocol.Trame;
-import fr.uge.chatnoir.protocol.Message;
-import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.readers.*;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
@@ -23,12 +22,11 @@ public class ClientSession {
     private final SocketChannel sc;
     private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
     private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
-    private final Queue<Message> messages = new ArrayDeque<>();
-    private String nickname;
+    private final Queue<Trame> queue = new ArrayDeque<>();
+    public String nickname;
     private boolean registered = false;
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
 
-    private final Reader<String> authRequestReader = new AuthRequestReader();
     private final Reader<Message> publicMessageReader = new PublicMessageReader();
     private final Reader<PrivateMessage> privateMessageReader = new PrivateMessageReader();
     private final Reader<List<FileShare>> fileShareReader = new FileShareReader();
@@ -38,7 +36,7 @@ public class ClientSession {
 
 
 
-    private final Reader<Trame> frameReader = new FrameReader();
+    private final Reader<Trame> trameReader = new TrameReader();
 
     public ClientSession(Server server, SelectionKey key, SocketChannel sc) {
         this.server = server;
@@ -50,7 +48,6 @@ public class ClientSession {
         bufferIn.clear();
         int read = sc.read(bufferIn);
         if (read == -1) {
-
             server.unregisterClient(nickname);
             sc.close();
             return;
@@ -60,6 +57,8 @@ public class ClientSession {
     }
 
     public void doWrite() throws IOException {
+
+        System.out.println("send ");
         bufferOut.flip();
         sc.write(bufferOut);
         bufferOut.compact();
@@ -68,16 +67,38 @@ public class ClientSession {
 
     private void processIn() {
         for (;;) {
-            Reader.ProcessStatus status = frameReader.process(bufferIn);
+            Reader.ProcessStatus status = trameReader.process(bufferIn);
             switch (status) {
                 case DONE:
 
-                    var value = frameReader.get();
+                    var trame = trameReader.get();
 
-                    System.out.println("Frame ==> "+value);
-                    System.out.println("protocol ==> "+value.protocol());
-                    frameReader.reset();
+                    System.out.println("Frame ==> "+trame);
+                    System.out.println("protocol ==> "+trame.protocol());
+                    trameReader.reset();
 
+                    switch(trame.protocol()){
+                        case ChatMessageProtocol.AUTH_REQUEST -> {
+                            nickname = ((AuthTrame) trame).login();
+                            if(!server.registerClient(nickname, this)){
+                                //server.sendAuthRes(200, this);
+                                queueMessage(new Message("ERROR: Pseudonyme already in use."));
+
+                            }else{
+                               // server.sendAuthRes(403, this);
+                                queueMessage(new Message("Welcome " + nickname + "!"));
+                            }
+                            System.out.println("clients ==> "+ server.clients);
+                            /*try {
+                                var sa = server.clients.get("Alex").sc.getRemoteAddress();
+                                System.out.println("==> "+sa);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }*/
+
+
+                        }
+                    }
                     return;
                 case REFILL:
                     return;
@@ -130,14 +151,24 @@ public class ClientSession {
     }
 
     public void queueMessage(Message message) {
-        messages.add(message);
+        queue.add(message);
         processOut();
         updateInterestOps();
     }
 
     private void processOut() {
-        while (!messages.isEmpty() && bufferOut.remaining() > 0) {
-            bufferOut.put(messages.poll().toByteBuffer(UTF_8));
+        while (!queue.isEmpty()) {
+            var trame = queue.peek();
+            var bbMsg = trame.toByteBuffer(UTF_8);
+            if(bufferOut.remaining() >= bbMsg.remaining()) {
+                queue.poll();
+                System.out.println("==> "+trame +" -- "+trame.protocol());
+                bufferOut.putInt(trame.protocol());
+                bufferOut.put(bbMsg);
+
+            }else {
+                break;
+            }
         }
     }
 

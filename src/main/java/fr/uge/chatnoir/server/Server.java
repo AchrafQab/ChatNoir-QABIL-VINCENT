@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 public class Server {
     private static final int PORT = 2002;
     private static final Logger logger = Logger.getLogger(Server.class.getName());
-    private final Map<String, ClientSession> clients = new HashMap<>();
+    public final Map<String, ClientSession> clients = new HashMap<>();
     private final Map<String, SharedFileRegistry> fileRegistry = new HashMap<>();
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
@@ -67,6 +67,9 @@ public class Server {
 
     private void silentlyClose(SelectionKey key) {
         Channel sc = (Channel) key.channel();
+        var cs = (ClientSession) key.attachment();
+        unregisterClient(cs.nickname);
+        System.out.println("clients ==> "+clients);
         try {
             sc.close();
         } catch (IOException e) {
@@ -126,6 +129,14 @@ public class Server {
     public Map<String, SharedFileRegistry> getFileRegistry() {
         synchronized (lock) {
             return new HashMap<>(fileRegistry);
+        }
+    }
+
+    public void sendAuthRes(Integer code, ClientSession client){
+       synchronized (lock) {
+            if (client != null) {
+                client.queueMessage(new Message("ok"));
+            }
         }
     }
 
