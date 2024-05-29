@@ -1,11 +1,14 @@
-package fr.uge.chatnoir.protocol;
+package fr.uge.chatnoir.protocol.message;
+
+import fr.uge.chatnoir.protocol.ChatMessageProtocol;
+import fr.uge.chatnoir.protocol.Trame;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-public record Message(String message, Integer protocol) implements Trame {
+public record PublicMessage(String message, Integer protocol) implements Trame {
 
-    public Message(String message) {
+    public PublicMessage(String message) {
         this(message, ChatMessageProtocol.PUBLIC_MESSAGE);
     }
 

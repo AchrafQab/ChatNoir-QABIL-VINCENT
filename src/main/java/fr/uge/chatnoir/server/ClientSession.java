@@ -1,10 +1,13 @@
 package fr.uge.chatnoir.server;
 
 import fr.uge.chatnoir.protocol.*;
+import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
+import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.message.PrivateMessage;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 import fr.uge.chatnoir.readers.*;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
@@ -26,13 +29,6 @@ public class ClientSession {
     public String nickname;
     private boolean registered = false;
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
-
-    private final Reader<Message> publicMessageReader = new PublicMessageReader();
-    private final Reader<PrivateMessage> privateMessageReader = new PrivateMessageReader();
-    private final Reader<List<FileShare>> fileShareReader = new FileShareReader();
-    private final Reader<List<String>> fileUnshareReader = new FileUnshareReader();
-    private final Reader<Void> fileListRequestReader = new FileListRequestReader();
-    private final Reader<String> fileDownloadRequestReader = new FileDownloadRequestReader();
 
 
 
@@ -79,16 +75,17 @@ public class ClientSession {
 
                     switch(trame.protocol()){
                         case ChatMessageProtocol.AUTH_REQUEST -> {
-                            nickname = ((AuthTrame) trame).login();
+                            nickname = ((AuthReqTrame) trame).login();
                             if(!server.registerClient(nickname, this)){
-                                //server.sendAuthRes(200, this);
-                                queueMessage(new Message("ERROR: Pseudonyme already in use."));
+                                queueTrame(new AuthResTrame(403));
 
                             }else{
-                               // server.sendAuthRes(403, this);
-                                queueMessage(new Message("Welcome " + nickname + "!"));
+                                queueTrame(new AuthResTrame(200));
                             }
                             System.out.println("clients ==> "+ server.clients);
+
+
+
                             /*try {
                                 var sa = server.clients.get("Alex").sc.getRemoteAddress();
                                 System.out.println("==> "+sa);
@@ -97,6 +94,14 @@ public class ClientSession {
                             }*/
 
 
+                        }
+
+                        case ChatMessageProtocol.PUBLIC_MESSAGE -> {
+                            server.broadcast(((PublicMessage) trame));
+                        }
+
+                        case ChatMessageProtocol.PRIVATE_MESSAGE -> {
+                            server.sendPrivateMessage(((PrivateMessage) trame));
                         }
                     }
                     return;
@@ -127,14 +132,6 @@ public class ClientSession {
         }*/
     }
 
-    private void handleBroadcastMessage(Message message) {
-        server.broadcast(message.message(), nickname);
-    }
-
-    private void handlePrivateMessage(String recipient, String message) {
-        server.sendPrivateMessage(message, nickname, recipient);
-    }
-
     private void handleFileShare(String fileName) {
         // handle file announcement
     }
@@ -150,8 +147,8 @@ public class ClientSession {
         // handle file download request
     }
 
-    public void queueMessage(Message message) {
-        queue.add(message);
+    public void queueTrame(Trame trame) {
+        queue.add(trame);
         processOut();
         updateInterestOps();
     }
@@ -162,7 +159,7 @@ public class ClientSession {
             var bbMsg = trame.toByteBuffer(UTF_8);
             if(bufferOut.remaining() >= bbMsg.remaining()) {
                 queue.poll();
-                System.out.println("==> "+trame +" -- "+trame.protocol());
+                System.out.println("==> send "+trame +" -- "+trame.protocol());
                 bufferOut.putInt(trame.protocol());
                 bufferOut.put(bbMsg);
 

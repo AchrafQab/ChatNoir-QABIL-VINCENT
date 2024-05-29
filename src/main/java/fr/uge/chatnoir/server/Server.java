@@ -1,9 +1,11 @@
 package fr.uge.chatnoir.server;
 
 import fr.uge.chatnoir.client.SharedFileRegistry;
-import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.message.PrivateMessage;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.HashMap;
@@ -47,8 +49,8 @@ public class Server {
             if (key.isValid() && key.isWritable()) {
                 ((ClientSession) key.attachment()).doWrite();
             }
-        } catch (IOException e) {
-            logger.log(Level.INFO, "Connection closed with client due to IOException", e);
+        } catch (IOException ioe) {
+            logger.log(Level.INFO, "Connection closed with client due to IOException", ioe);
             silentlyClose(key);
         }
     }
@@ -74,6 +76,7 @@ public class Server {
             sc.close();
         } catch (IOException e) {
             // Ignore exception
+
         }
     }
 
@@ -97,19 +100,21 @@ public class Server {
         }
     }
 
-    public void broadcast(String message, String sender) {
+    public void broadcast(PublicMessage message) {
         synchronized (lock) {
             for (ClientSession client : clients.values()) {
-                client.queueMessage(new Message(message));
+                client.queueTrame(message);
             }
         }
     }
 
-    public void sendPrivateMessage(String message, String sender, String recipient) {
+    public void sendPrivateMessage(PrivateMessage message) {
         synchronized (lock) {
-            ClientSession client = clients.get(recipient);
+            ClientSession client = clients.get(message.nickname());
             if (client != null) {
-                client.queueMessage(new Message(message));
+                client.queueTrame(message);
+            }else{
+                System.out.println("Client "+message.nickname()+" not found");
             }
         }
     }
@@ -132,13 +137,7 @@ public class Server {
         }
     }
 
-    public void sendAuthRes(Integer code, ClientSession client){
-       synchronized (lock) {
-            if (client != null) {
-                client.queueMessage(new Message("ok"));
-            }
-        }
-    }
+
 
     public static void main(String[] args) throws IOException {
         new Server().launch();

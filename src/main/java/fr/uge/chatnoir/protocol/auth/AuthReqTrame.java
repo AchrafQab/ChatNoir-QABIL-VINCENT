@@ -1,4 +1,4 @@
-package fr.uge.chatnoir.protocol;
+package fr.uge.chatnoir.protocol.auth;
 
 
 import fr.uge.chatnoir.protocol.ChatMessageProtocol;
@@ -7,9 +7,9 @@ import fr.uge.chatnoir.protocol.Trame;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-public record AuthTrame(String login, Integer protocol) implements Trame {
+public record AuthReqTrame(String login, Integer protocol) implements Trame {
 
-    public AuthTrame(String login) {
+    public AuthReqTrame(String login) {
         this(login, ChatMessageProtocol.AUTH_REQUEST);
     }
 

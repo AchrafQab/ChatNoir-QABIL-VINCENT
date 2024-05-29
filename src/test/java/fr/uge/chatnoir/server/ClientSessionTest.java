@@ -1,6 +1,6 @@
 package fr.uge.chatnoir.server;
 
-import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 import org.junit.jupiter.api.Test;
 
 import java.nio.channels.SelectionKey;
@@ -44,10 +44,10 @@ class ClientSessionTest {
         SocketChannel sc = mock(SocketChannel.class);
 
         ClientSession session = new ClientSession(server, key, sc);
-        Message message = new Message("sender", "test message");
+        PublicMessage publicMessage = new PublicMessage("sender", "test message");
 
-        session.queueMessage(message);
-        Queue<Message> messages = session.getMessages();
-        assertEquals(1, messages.size());
+        session.queueMessage(publicMessage);
+        Queue<PublicMessage> publicMessages = session.getMessages();
+        assertEquals(1, publicMessages.size());
     }
 }

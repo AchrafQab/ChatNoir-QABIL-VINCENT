@@ -1,17 +1,18 @@
 package fr.uge.chatnoir.readers;
 
 import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.message.PrivateMessage;
 
 import java.nio.ByteBuffer;
 
 public class PrivateMessageReader implements Reader<PrivateMessage> {
-    private enum State { DONE, WAITING_RECIPIENT_LENGTH, WAITING_RECIPIENT, WAITING_MESSAGE_LENGTH, WAITING_MESSAGE, ERROR }
+    private enum State { DONE, WAITING_NICKNAME, WAITING_MESSAGE, ERROR }
 
-    private State state = State.WAITING_RECIPIENT_LENGTH;
-    private final IntReader intReader = new IntReader();
+    private State state = State.WAITING_NICKNAME;
     private final StringReader stringReader = new StringReader();
-    private String recipient;
+    private String nickname;
     private String message;
+    private PrivateMessage value;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -19,58 +20,38 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
             throw new IllegalStateException();
         }
 
-        switch (state) {
-            case WAITING_RECIPIENT_LENGTH:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    int recipientLength = intReader.get();
-                    if (recipientLength <= 0 || recipientLength > 1024) {
-                        state = State.ERROR;
-                        return ProcessStatus.ERROR;
-                    }
-                    stringReader.reset();
-                    state = State.WAITING_RECIPIENT;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
+        if(state == State.WAITING_NICKNAME){
+            var read = stringReader.process(buffer);
+            if(read == ProcessStatus.ERROR){
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if(read == ProcessStatus.REFILL){
+                return ProcessStatus.REFILL;
+            }
 
-            case WAITING_RECIPIENT:
-                if (stringReader.process(buffer) == ProcessStatus.DONE) {
-                    recipient = stringReader.get();
-                    intReader.reset();
-                    state = State.WAITING_MESSAGE_LENGTH;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
+            nickname = stringReader.get();
 
-            case WAITING_MESSAGE_LENGTH:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    int messageLength = intReader.get();
-                    if (messageLength <= 0 || messageLength > 1024) {
-                        state = State.ERROR;
-                        return ProcessStatus.ERROR;
-                    }
-                    stringReader.reset();
-                    state = State.WAITING_MESSAGE;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_MESSAGE:
-                if (stringReader.process(buffer) == ProcessStatus.DONE) {
-                    message = stringReader.get();
-                    state = State.DONE;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            default:
-                throw new IllegalStateException();
+            stringReader.reset();
+            state = State.WAITING_MESSAGE;
         }
+        if(state == State.WAITING_MESSAGE){
+            var read = stringReader.process(buffer);
+            if(read == ProcessStatus.ERROR){
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if(read == ProcessStatus.REFILL){
+                return ProcessStatus.REFILL;
+            }
 
+            message = stringReader.get();
+            stringReader.reset();
+
+
+        }
+        value = new PrivateMessage(message, nickname);
+        state = State.DONE;
         return ProcessStatus.DONE;
     }
 
@@ -79,15 +60,14 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
-        return new PrivateMessage(recipient, message);
+        return value;
     }
 
     @Override
     public void reset() {
-        state = State.WAITING_RECIPIENT_LENGTH;
-        intReader.reset();
+        state = State.WAITING_NICKNAME;
         stringReader.reset();
-        recipient = null;
+        nickname = null;
         message = null;
     }
 }

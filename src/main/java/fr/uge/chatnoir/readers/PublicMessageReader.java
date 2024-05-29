@@ -1,20 +1,17 @@
 package fr.uge.chatnoir.readers;
 
 import fr.uge.chatnoir.protocol.Reader;
-import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 
 import java.nio.ByteBuffer;
 
-public class PublicMessageReader implements Reader<Message> {
+public class PublicMessageReader implements Reader<PublicMessage> {
     private enum State { DONE, WAITING_MESSAGE, ERROR }
 
     private State state = State.WAITING_MESSAGE;
-    private final IntReader intReader = new IntReader();
     private final StringReader stringReader = new StringReader();
-    private int length;
-    private String login;
     private String message;
-    private Message value;
+    private PublicMessage value;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -34,20 +31,19 @@ public class PublicMessageReader implements Reader<Message> {
             }
 
             message = stringReader.get();
-            System.out.println("msg ==> "+message);
             stringReader.reset();
 
         }
        // System.out.println("login ==> "+login);
        // System.out.println("message ==> "+message);
 
-        value = new Message(message);
+        value = new PublicMessage(message);
         state = State.DONE;
         return ProcessStatus.DONE;
     }
 
     @Override
-    public Message get() {
+    public PublicMessage get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
@@ -57,8 +53,6 @@ public class PublicMessageReader implements Reader<Message> {
     @Override
     public void reset() {
         state = State.WAITING_MESSAGE;
-        intReader.reset();
         stringReader.reset();
-        length = 0;
     }
 }

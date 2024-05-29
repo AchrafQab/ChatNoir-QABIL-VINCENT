@@ -1,17 +1,18 @@
 package fr.uge.chatnoir.readers;
 
-import fr.uge.chatnoir.protocol.Reader;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
+import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 
 import java.nio.ByteBuffer;
 
-public class AuthRequestReader implements Reader<AuthReqTrame> {
+public class AuthReponseReader implements Reader<AuthResTrame> {
 
     private enum State { DONE, WAITING_NICKNAME, ERROR }
     private State state = State.WAITING_NICKNAME;
-    private final StringReader stringReader = new StringReader();
-    private AuthReqTrame value;
-    private String login;
+    private final IntReader intReader = new IntReader();
+    private AuthResTrame value;
+    private Integer code;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -20,7 +21,7 @@ public class AuthRequestReader implements Reader<AuthReqTrame> {
         }
 
         if(state == State.WAITING_NICKNAME){
-            var read = stringReader.process(buffer);
+            var read = intReader.process(buffer);
             if(read == ProcessStatus.ERROR){
                 state= State.ERROR;
                 return ProcessStatus.ERROR;
@@ -29,19 +30,19 @@ public class AuthRequestReader implements Reader<AuthReqTrame> {
                 return ProcessStatus.REFILL;
             }
 
-            login = stringReader.get();
-            stringReader.reset();
+            code = intReader.get();
+            intReader.reset();
 
 
         }
 
-        value = new AuthReqTrame(login);
+        value = new AuthResTrame(code);
         state = State.DONE;
         return ProcessStatus.DONE;
     }
 
     @Override
-    public AuthReqTrame get() {
+    public AuthResTrame get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
@@ -51,7 +52,7 @@ public class AuthRequestReader implements Reader<AuthReqTrame> {
     @Override
     public void reset() {
         state = State.WAITING_NICKNAME;
-        stringReader.reset();
+        intReader.reset();
 
     }
 }

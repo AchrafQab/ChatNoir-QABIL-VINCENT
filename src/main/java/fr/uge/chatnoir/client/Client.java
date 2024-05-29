@@ -1,10 +1,13 @@
 package fr.uge.chatnoir.client;
 
+import fr.uge.chatnoir.protocol.ChatMessageProtocol;
 import fr.uge.chatnoir.protocol.Trame;
-import fr.uge.chatnoir.protocol.AuthTrame;
+import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
+import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
-import fr.uge.chatnoir.protocol.Message;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 import fr.uge.chatnoir.readers.TrameReader;
 
 import java.io.IOException;
@@ -55,11 +58,24 @@ public class Client {
                 Reader.ProcessStatus status = trameReader.process(bufferIn);
                 switch (status) {
                     case DONE:
-                        /*var value = publicMessageReader.get();
-                        System.out.println("login : "+" message : "+value.message());
-                        */
-                        System.out.println("test");
-                        publicMessageReader.reset();
+                        var value = trameReader.get();
+                        switch (value.protocol()){
+                            case ChatMessageProtocol.AUTH_RESPONSE -> {
+                                if(((AuthResTrame) value).code() == 200){
+                                    ((Client) key.attachment()).console.start();
+                                }else{
+                                    System.out.println("Echec : "+((AuthResTrame) value).code());
+                                }
+
+                            }
+                            case ChatMessageProtocol.PUBLIC_MESSAGE -> {
+                                System.out.println("new message => "+value);
+                            }
+                            case ChatMessageProtocol.PRIVATE_MESSAGE -> {
+                                System.out.println("new message => "+value);
+                            }
+                        }
+                        trameReader.reset();
                         return;
                     case REFILL:
                         return;
@@ -97,7 +113,7 @@ public class Client {
                 var bbMsg = trame.toByteBuffer(UTF8);
                 if(bufferOut.remaining() >= bbMsg.remaining()) {
                     queue.poll();
-                    System.out.println("==> "+trame +" -- "+trame.protocol());
+                    // System.out.println("==> "+trame +" -- "+trame.protocol());
                     bufferOut.putInt(trame.protocol());
                     bufferOut.put(bbMsg);
 
@@ -156,7 +172,6 @@ public class Client {
         private void doRead() throws IOException {
             // TODO
             closed = (sc.read(bufferIn)) == -1;
-            System.out.println("do read");
             processIn();
             updateInterestOps();
         }
@@ -172,7 +187,6 @@ public class Client {
 
         private void doWrite() throws IOException {
             // TODO
-            System.out.println("do write");
             bufferOut.flip();
             sc.write(bufferOut);
             bufferOut.compact();
@@ -198,6 +212,7 @@ public class Client {
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final String login;
+    private Boolean running = true;
     private final Thread console;
     private final Thread auth;
     private Context uniqueContext;
@@ -211,7 +226,7 @@ public class Client {
         this.console = Thread.ofPlatform().unstarted(this::consoleRun);
         this.auth = Thread.ofPlatform().unstarted(() -> {
             try {
-                sendCommand(new AuthTrame(login));
+                sendCommand(new AuthReqTrame(login));
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -220,16 +235,49 @@ public class Client {
     }
 
     private void consoleRun() {
-        try {
-            try (var scanner = new Scanner(System.in)) {
-                while (scanner.hasNextLine()) {
-                    var msg = scanner.nextLine();
-                    sendCommand(new Message(msg));
+        System.out.println("start console ...");
+        try (var scanner = new Scanner(System.in)) {
+            while (running) {
+                System.out.println("Veuillez choisir une option:");
+                System.out.println("1. Envoyer un message public");
+                System.out.println("2. Envoyer un message privé");
+                System.out.println("3. Quitter");
+                System.out.print("Votre choix: ");
+
+                if (scanner.hasNextLine()) {
+                    var input = scanner.nextLine();
+                    switch (input) {
+                        case "1":
+                            System.out.print("Entrez votre message: ");
+                            if (scanner.hasNextLine()) {
+                                var command = scanner.nextLine();
+                                sendCommand(new PublicMessage(command));
+                            }
+                            break;
+                        case "2":
+                            System.out.print("Entrez votre message: ");
+                            if (scanner.hasNextLine()) {
+                                var message = scanner.nextLine();
+                                System.out.print("Entrez le pseudonyme: ");
+                                if (scanner.hasNextLine()) {
+                                    var nickname = scanner.nextLine();
+                                    sendCommand(new PrivateMessage(message, nickname));
+                                }
+                            }
+                            break;
+                        case "3":
+                            System.out.println("Arrêt de la console...");
+                            running = false;
+                            break;
+                        default:
+                            System.out.println("Choix invalide, veuillez réessayer.");
+                            break;
+                    }
                 }
             }
             logger.info("Console thread stopping");
-        } catch (InterruptedException e) {
-            logger.info("Console thread has been interrupted");
+        } catch (Exception e) {
+            logger.severe("Erreur dans le thread de la console: " + e.getMessage());
         }
     }
 
@@ -261,7 +309,7 @@ public class Client {
         synchronized(lock) {
             Trame trame = blockQueue.poll();
             if(trame != null) {
-                System.out.println("process ==> "+ trame);
+                // System.out.println("process ==> "+ trame);
                 uniqueContext.queueTrame(trame);
             }
 
@@ -273,14 +321,14 @@ public class Client {
         sc.configureBlocking(false);
         var key = sc.register(selector, SelectionKey.OP_CONNECT);
         uniqueContext = new Context(key);
-        key.attach(uniqueContext);
+        key.attach(this);
         sc.connect(serverAddress);
 
 
         auth.start();
-        console.start();
+        //console.start();
 
-        while (!Thread.interrupted()) {
+        while (!Thread.interrupted() && running) {
             try {
 
                 selector.select(this::treatKey);

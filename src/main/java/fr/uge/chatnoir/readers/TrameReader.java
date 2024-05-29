@@ -2,13 +2,19 @@ package fr.uge.chatnoir.readers;
 
 
 import fr.uge.chatnoir.protocol.*;
+import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
+import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.message.PrivateMessage;
+import fr.uge.chatnoir.protocol.message.PublicMessage;
 
 import java.nio.ByteBuffer;
 
 public class TrameReader implements Reader<Trame> {
 
-    private final Reader<Message> publicMessageReader = new PublicMessageReader();
-    private final Reader<AuthTrame> authRequestReader = new AuthRequestReader();
+    private final Reader<PublicMessage> publicMessageReader = new PublicMessageReader();
+    private final Reader<PrivateMessage> privateMessageReader = new PrivateMessageReader();
+    private final Reader<AuthReqTrame> authRequestReader = new AuthRequestReader();
+    private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
 
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
@@ -33,11 +39,19 @@ public class TrameReader implements Reader<Trame> {
             case DONE:
                 var op = opReader.get();
                 opReader.reset();
-
-                System.out.println("op ==> " + op);
                 switch (op) {
 
+                    case ChatMessageProtocol.PRIVATE_MESSAGE:
+                        var privateMessageReaderState = privateMessageReader.process(buffer);
 
+                        if (privateMessageReaderState == Reader.ProcessStatus.DONE) {
+                            value = privateMessageReader.get();
+
+                        } else if (privateMessageReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return privateMessageReaderState;
+                        }
+                        break;
 
 
 
@@ -46,34 +60,34 @@ public class TrameReader implements Reader<Trame> {
 
                         if (publicMessageReaderState == Reader.ProcessStatus.DONE) {
                             value = publicMessageReader.get();
-                            publicMessageReader.reset();
                         } else if (publicMessageReaderState == Reader.ProcessStatus.ERROR) {
                             buffer.clear();
                             return publicMessageReaderState;
                         }
                         break;
+
+
                     case ChatMessageProtocol.AUTH_REQUEST:
                        var authRequestReaderState = authRequestReader.process(buffer);
 
                         if (authRequestReaderState == Reader.ProcessStatus.DONE) {
                             value = authRequestReader.get();
-                            publicMessageReader.reset();
+
                         } else if (authRequestReaderState == Reader.ProcessStatus.ERROR) {
                             buffer.clear();
                             return authRequestReaderState;
                         }
                         break;
                     case ChatMessageProtocol.AUTH_RESPONSE:
-                       /*var publicMessageReaderState = publicMessageReader.process(buffer);
+                       var authResponseReaderState = authResponseReader.process(buffer);
 
-                        if (publicMessageReaderState == Reader.ProcessStatus.DONE) {
-                            value = publicMessageReader.get();
-                            publicMessageReader.reset();
-                        } else if (publicMessageReaderState == Reader.ProcessStatus.ERROR) {
+                        if (authResponseReaderState == Reader.ProcessStatus.DONE) {
+                            value = authResponseReader.get();
+                        } else if (authResponseReaderState == Reader.ProcessStatus.ERROR) {
                             buffer.clear();
-                            return publicMessageReaderState;
-                        }*/
-                        value = new Message("auth client");
+                            return authResponseReaderState;
+                        }
+
 
                         break;
                     default:
@@ -104,6 +118,10 @@ public class TrameReader implements Reader<Trame> {
     @Override
     public void reset() {
         state = State.WAITING_FRAME;
+        authResponseReader.reset();
+        publicMessageReader.reset();
+        privateMessageReader.reset();
+        authRequestReader.reset();
         internalBuffer.clear();
     }
 
