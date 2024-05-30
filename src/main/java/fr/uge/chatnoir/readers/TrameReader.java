@@ -4,17 +4,19 @@ package fr.uge.chatnoir.readers;
 import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.file.FileShare;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
 import java.nio.ByteBuffer;
 
 public class TrameReader implements Reader<Trame> {
-
     private final Reader<PublicMessage> publicMessageReader = new PublicMessageReader();
     private final Reader<PrivateMessage> privateMessageReader = new PrivateMessageReader();
     private final Reader<AuthReqTrame> authRequestReader = new AuthRequestReader();
     private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
+    private final Reader<FileShare> fileShareReader = new FileShareReader();
+
 
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
@@ -22,7 +24,6 @@ public class TrameReader implements Reader<Trame> {
 
     private static final int BUFFER_SIZE = Integer.BYTES;
     private State state = State.WAITING_FRAME;
-    //private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private final ByteBuffer internalBuffer = ByteBuffer.allocate(BUFFER_SIZE);// write-mode
     private Trame value;
     private  final Reader<Integer> opReader = new opReader();
@@ -33,7 +34,9 @@ public class TrameReader implements Reader<Trame> {
             throw new IllegalStateException();
         }
 
-        // Process the operation reader state
+        // Process the operation reader state;
+
+
         var opReaderState = opReader.process(buffer);
         switch (opReaderState) {
             case DONE:
@@ -90,6 +93,19 @@ public class TrameReader implements Reader<Trame> {
 
 
                         break;
+
+
+                    case ChatMessageProtocol.FILE_SHARE:
+                        var fileShareReaderState = fileShareReader.process(buffer);
+
+                        if (fileShareReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileShareReader.get();
+
+                        } else if (fileShareReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileShareReaderState;
+                        }
+                        break;
                     default:
                         state = State.ERROR;
                         return ProcessStatus.ERROR;
@@ -123,6 +139,7 @@ public class TrameReader implements Reader<Trame> {
         privateMessageReader.reset();
         authRequestReader.reset();
         internalBuffer.clear();
+        fileShareReader.reset();
     }
 
 

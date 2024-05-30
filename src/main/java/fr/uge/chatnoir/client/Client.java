@@ -4,6 +4,8 @@ import fr.uge.chatnoir.protocol.ChatMessageProtocol;
 import fr.uge.chatnoir.protocol.Trame;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.file.FileInfo;
+import fr.uge.chatnoir.protocol.file.FileShare;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
@@ -20,7 +22,9 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -241,7 +245,8 @@ public class Client {
                 System.out.println("Veuillez choisir une option:");
                 System.out.println("1. Envoyer un message public");
                 System.out.println("2. Envoyer un message privé");
-                System.out.println("3. Quitter");
+                System.out.println("3. Partager un fichier");
+                System.out.println("4. Quitter");
                 System.out.print("Votre choix: ");
 
                 if (scanner.hasNextLine()) {
@@ -265,7 +270,32 @@ public class Client {
                                 }
                             }
                             break;
+
                         case "3":
+
+                            // while scanner.nextLine() is not -1 create file
+                            /*if (scanner.hasNextLine()) {
+                                var path = scanner.nextLine();
+                                var file = new File(Path.of(path));
+                                System.out.println("file ==> "+file.size);
+                            }*/
+                            System.out.print("Entrez le path du fichier: ");
+                            var files = new ArrayList<FileInfo>();
+                            while (scanner.hasNextLine()) {
+                                System.out.print("Entrez le path du fichier: ");
+                                var path = scanner.nextLine();
+                                if(path.isEmpty()){
+                                    break;
+                                }
+                                var file = new FileInfo(Path.of(path));
+                                files.add(file);
+                                // sendCommand(new FileShare(file));
+                            }
+                            System.out.println("files ==> "+files);
+                            sendCommand(new FileShare(files));
+                            break;
+
+                        case "4":
                             System.out.println("Arrêt de la console...");
                             running = false;
                             break;

@@ -4,11 +4,13 @@ import fr.uge.chatnoir.client.SharedFileRegistry;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,7 +19,7 @@ public class Server {
     private static final int PORT = 2002;
     private static final Logger logger = Logger.getLogger(Server.class.getName());
     public final Map<String, ClientSession> clients = new HashMap<>();
-    private final Map<String, SharedFileRegistry> fileRegistry = new HashMap<>();
+    private final Map<String, List<File>> fileRegistry = new HashMap<>();
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
     private final Object lock = new Object();
@@ -118,19 +120,20 @@ public class Server {
             }
         }
     }
-
+    /*
     public void registerFiles(String nickname, SharedFileRegistry registry) {
         synchronized (lock) {
             fileRegistry.put(nickname, registry);
         }
     }
+    */
 
     public void unregisterFiles(String nickname) {
         synchronized (lock) {
             fileRegistry.remove(nickname);
         }
     }
-
+/*
     public Map<String, SharedFileRegistry> getFileRegistry() {
         synchronized (lock) {
             return new HashMap<>(fileRegistry);
@@ -138,6 +141,13 @@ public class Server {
     }
 
 
+*/
+
+/*
+    {
+        "test.txt"=["127.0.0.1", "128.0.0.1"]
+    }
+*/
 
     public static void main(String[] args) throws IOException {
         new Server().launch();

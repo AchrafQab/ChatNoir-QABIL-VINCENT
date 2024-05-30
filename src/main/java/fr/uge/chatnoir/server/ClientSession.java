@@ -3,6 +3,7 @@ package fr.uge.chatnoir.server;
 import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.file.FileShare;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 import fr.uge.chatnoir.readers.*;
@@ -15,7 +16,6 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.List;
 import java.util.Queue;
 
 public class ClientSession {
@@ -83,17 +83,12 @@ public class ClientSession {
                                 queueTrame(new AuthResTrame(200));
                             }
                             System.out.println("clients ==> "+ server.clients);
-
-
-
                             /*try {
                                 var sa = server.clients.get("Alex").sc.getRemoteAddress();
                                 System.out.println("==> "+sa);
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }*/
-
-
                         }
 
                         case ChatMessageProtocol.PUBLIC_MESSAGE -> {
@@ -102,6 +97,10 @@ public class ClientSession {
 
                         case ChatMessageProtocol.PRIVATE_MESSAGE -> {
                             server.sendPrivateMessage(((PrivateMessage) trame));
+                        }
+
+                        case ChatMessageProtocol.FILE_SHARE -> {
+                            System.out.println("file share"+ ((FileShare) trame).fileInfos());
                         }
                     }
                     return;
