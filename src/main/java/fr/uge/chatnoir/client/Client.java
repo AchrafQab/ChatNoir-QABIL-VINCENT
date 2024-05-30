@@ -72,6 +72,10 @@ public class Client {
                                 System.out.println("new message => "+value);
                             }
 
+                            case ChatMessageProtocol.PRIVATE_MESSAGE -> {
+                                System.out.println("new message => "+value);
+                            }
+
                             case ChatMessageProtocol.FILE_LIST_RESPONSE -> {
                                 System.out.println(((GetAllFileRes) value));
                                 files = ((GetAllFileRes) value).files();
