@@ -72,7 +72,7 @@ public class Server {
     private void silentlyClose(SelectionKey key) {
         Channel sc = (Channel) key.channel();
         var cs = (ClientSession) key.attachment();
-        unregisterClient(cs.nickname);
+        unregisterClient(cs);
         System.out.println("clients ==> "+clients);
         try {
             sc.close();
@@ -94,11 +94,16 @@ public class Server {
         }
     }
 
-    public void unregisterClient(String nickname) {
+    public void unregisterClient(ClientSession client) {
         synchronized (lock) {
-            System.out.println("remove ==> "+nickname);
-            clients.remove(nickname);
-            fileRegistry.remove(nickname);
+            System.out.println("remove ==> "+client.nickname);
+            clients.remove(client.nickname);
+            // remove client from all array list in fileRegistry
+            fileRegistry.entrySet().removeIf(entry -> {
+                List<ClientSession> clientSessions = entry.getValue();
+                clientSessions.remove(client);
+                return clientSessions.isEmpty();
+            });
         }
     }
 

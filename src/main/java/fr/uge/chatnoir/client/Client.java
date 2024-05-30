@@ -79,7 +79,7 @@ public class Client {
                             }
 
                             case ChatMessageProtocol.FILE_LIST_RESPONSE -> {
-                                System.out.println("files ==> " + ((GetAllFileRes) value));
+                                System.out.println(((GetAllFileRes) value));
                             }
                         }
                         trameReader.reset();
@@ -251,7 +251,6 @@ public class Client {
                 System.out.println("3. Partager un fichier");
                 System.out.println("4. Voir les fichiers partagés");
                 System.out.println("5. Quitter");
-                System.out.print("Votre choix: ");
 
                 if (scanner.hasNextLine()) {
                     var input = scanner.nextLine();
@@ -288,7 +287,7 @@ public class Client {
                                 files.add(file);
                                 // sendCommand(new FileShare(file));
                             }
-                            System.out.println("files ==> "+files);
+                            System.out.println(files);
                             sendCommand(new FileShare(files));
                             break;
 

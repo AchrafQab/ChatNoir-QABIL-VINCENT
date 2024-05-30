@@ -43,7 +43,7 @@ public class ClientSession {
         bufferIn.clear();
         int read = sc.read(bufferIn);
         if (read == -1) {
-            server.unregisterClient(nickname);
+            server.unregisterClient(this);
             sc.close();
             return;
         }

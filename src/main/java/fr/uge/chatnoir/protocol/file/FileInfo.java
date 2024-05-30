@@ -14,7 +14,7 @@ import java.util.Objects;
 
 public class FileInfo {
 
-    private final String title;
+    public final String title;
     public final String hash;
     public final int size;
     // private final String content;
