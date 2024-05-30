@@ -16,6 +16,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.Objects;
 import java.util.Queue;
 
 public class ClientSession {
@@ -29,8 +30,6 @@ public class ClientSession {
     public String nickname;
     private boolean registered = false;
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
-
-
 
     private final Reader<Trame> trameReader = new TrameReader();
 
@@ -100,7 +99,10 @@ public class ClientSession {
                         }
 
                         case ChatMessageProtocol.FILE_SHARE -> {
-                            System.out.println("file share"+ ((FileShare) trame).fileInfos());
+                            System.out.println("file share"+ ((FileShare) trame));
+
+                            server.registerFiles(((FileShare) trame).fileInfos(), this);
+
                         }
                     }
                     return;

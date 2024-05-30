@@ -15,7 +15,7 @@ import java.util.Objects;
 public class FileInfo {
 
     private final String title;
-    private final String hash;
+    public final String hash;
     public final int size;
     // private final String content;
 
@@ -27,6 +27,21 @@ public class FileInfo {
 
         this.size = (int) path.toFile().length();
    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(title, hash, size);
+    }
+
+
+   @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FileInfo fileInfo = (FileInfo) o;
+        return size == fileInfo.size && title.equals(fileInfo.title) && hash.equals(fileInfo.hash);
+    }
+
 
     public FileInfo(String title, String hash, int size) {
         Objects.requireNonNull(title);

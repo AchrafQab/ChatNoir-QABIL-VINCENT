@@ -1,14 +1,13 @@
 package fr.uge.chatnoir.server;
 
-import fr.uge.chatnoir.client.SharedFileRegistry;
+import fr.uge.chatnoir.protocol.file.FileInfo;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,7 @@ public class Server {
     private static final int PORT = 2002;
     private static final Logger logger = Logger.getLogger(Server.class.getName());
     public final Map<String, ClientSession> clients = new HashMap<>();
-    private final Map<String, List<File>> fileRegistry = new HashMap<>();
+    private final Map<FileInfo, List<ClientSession>> fileRegistry = new HashMap<FileInfo, List<ClientSession>>();
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
     private final Object lock = new Object();
@@ -120,19 +119,30 @@ public class Server {
             }
         }
     }
-    /*
-    public void registerFiles(String nickname, SharedFileRegistry registry) {
+
+    public void registerFiles(List<FileInfo> files, ClientSession client) {
         synchronized (lock) {
-            fileRegistry.put(nickname, registry);
+            for (FileInfo file : files) {
+                if (!fileRegistry.containsKey(file)) {
+                    fileRegistry.put(file, new ArrayList<>());
+                }
+                //check if client is already in the list
+                if (!fileRegistry.get(file).contains(client)) {
+                    fileRegistry.get(file).add(client);
+                }
+            }
+            System.out.println(fileRegistry);
         }
     }
-    */
 
+    /*
     public void unregisterFiles(String nickname) {
         synchronized (lock) {
             fileRegistry.remove(nickname);
         }
     }
+    */
+
 /*
     public Map<String, SharedFileRegistry> getFileRegistry() {
         synchronized (lock) {
