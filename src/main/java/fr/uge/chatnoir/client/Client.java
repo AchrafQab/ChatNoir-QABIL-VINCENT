@@ -6,6 +6,8 @@ import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 import fr.uge.chatnoir.protocol.file.FileInfo;
 import fr.uge.chatnoir.protocol.file.FileShare;
+import fr.uge.chatnoir.protocol.file.GetAllFileReq;
+import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
@@ -75,8 +77,9 @@ public class Client {
                             case ChatMessageProtocol.PUBLIC_MESSAGE -> {
                                 System.out.println("new message => "+value);
                             }
-                            case ChatMessageProtocol.PRIVATE_MESSAGE -> {
-                                System.out.println("new message => "+value);
+
+                            case ChatMessageProtocol.FILE_LIST_RESPONSE -> {
+                                System.out.println("files ==> " + ((GetAllFileRes) value));
                             }
                         }
                         trameReader.reset();
@@ -246,7 +249,8 @@ public class Client {
                 System.out.println("1. Envoyer un message public");
                 System.out.println("2. Envoyer un message privé");
                 System.out.println("3. Partager un fichier");
-                System.out.println("4. Quitter");
+                System.out.println("4. Voir les fichiers partagés");
+                System.out.println("5. Quitter");
                 System.out.print("Votre choix: ");
 
                 if (scanner.hasNextLine()) {
@@ -272,13 +276,6 @@ public class Client {
                             break;
 
                         case "3":
-
-                            // while scanner.nextLine() is not -1 create file
-                            /*if (scanner.hasNextLine()) {
-                                var path = scanner.nextLine();
-                                var file = new File(Path.of(path));
-                                System.out.println("file ==> "+file.size);
-                            }*/
                             System.out.print("Entrez le path du fichier: ");
                             var files = new ArrayList<FileInfo>();
                             while (scanner.hasNextLine()) {
@@ -296,6 +293,10 @@ public class Client {
                             break;
 
                         case "4":
+                            sendCommand(new GetAllFileReq());
+                            break;
+
+                        case "5":
                             System.out.println("Arrêt de la console...");
                             running = false;
                             break;

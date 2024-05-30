@@ -104,6 +104,11 @@ public class ClientSession {
                             server.registerFiles(((FileShare) trame).fileInfos(), this);
 
                         }
+
+                        case ChatMessageProtocol.FILE_LIST_REQUEST -> {
+                            System.out.println("File list request");
+                            server.sendFilesList(this);
+                        }
                     }
                     return;
                 case REFILL:

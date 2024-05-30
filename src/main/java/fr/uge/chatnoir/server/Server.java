@@ -1,6 +1,7 @@
 package fr.uge.chatnoir.server;
 
 import fr.uge.chatnoir.protocol.file.FileInfo;
+import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
@@ -108,6 +109,14 @@ public class Server {
             }
         }
     }
+    public void sendFilesList(ClientSession clientSession) {
+        synchronized (lock) {
+            List<FileInfo> files = new ArrayList<>(fileRegistry.keySet());
+            clientSession.queueTrame(new GetAllFileRes(files));
+        }
+
+    }
+
 
     public void sendPrivateMessage(PrivateMessage message) {
         synchronized (lock) {
@@ -162,4 +171,6 @@ public class Server {
     public static void main(String[] args) throws IOException {
         new Server().launch();
     }
+
+
 }

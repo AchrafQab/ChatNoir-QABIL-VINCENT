@@ -5,6 +5,8 @@ import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 import fr.uge.chatnoir.protocol.file.FileShare;
+import fr.uge.chatnoir.protocol.file.GetAllFileReq;
+import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
@@ -16,6 +18,7 @@ public class TrameReader implements Reader<Trame> {
     private final Reader<AuthReqTrame> authRequestReader = new AuthRequestReader();
     private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
     private final Reader<FileShare> fileShareReader = new FileShareReader();
+    private final Reader<GetAllFileRes> getAllFileReader = new GetAllFileReader();
 
 
     private enum State {
@@ -106,6 +109,28 @@ public class TrameReader implements Reader<Trame> {
                             return fileShareReaderState;
                         }
                         break;
+
+
+                    case ChatMessageProtocol.FILE_LIST_REQUEST:
+                        value = new GetAllFileReq();
+                        break;
+
+
+                    case ChatMessageProtocol.FILE_LIST_RESPONSE:
+                        var getAllFileReaderState = getAllFileReader.process(buffer);
+
+                        if (getAllFileReaderState == Reader.ProcessStatus.DONE) {
+                            value = getAllFileReader.get();
+                        } else if (getAllFileReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return getAllFileReaderState;
+                        }
+                        break;
+
+
+
+
+
                     default:
                         state = State.ERROR;
                         return ProcessStatus.ERROR;
@@ -140,6 +165,8 @@ public class TrameReader implements Reader<Trame> {
         authRequestReader.reset();
         internalBuffer.clear();
         fileShareReader.reset();
+        getAllFileReader.reset();
+
     }
 
 
