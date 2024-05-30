@@ -10,4 +10,5 @@ public class ChatMessageProtocol {
     public static final int FILE_LIST_REQUEST = 6;
     public static final int FILE_LIST_RESPONSE = 16;
     public static final int FILE_DOWNLOAD_REQUEST = 7;
+    public static final int FILE_DOWNLOAD_RESPONSE = 17;
 }

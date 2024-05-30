@@ -3,6 +3,7 @@ package fr.uge.chatnoir.server;
 import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
+import fr.uge.chatnoir.protocol.file.FileDownloadReq;
 import fr.uge.chatnoir.protocol.file.FileShare;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
@@ -23,7 +24,7 @@ public class ClientSession {
     private static final int BUFFER_SIZE = 1024;
     private final Server server;
     private final SelectionKey key;
-    private final SocketChannel sc;
+    public final SocketChannel sc;
     private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
     private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
     private final Queue<Trame> queue = new ArrayDeque<>();
@@ -82,6 +83,9 @@ public class ClientSession {
                                 queueTrame(new AuthResTrame(200));
                             }
                             System.out.println("clients ==> "+ server.clients);
+
+
+
                             /*try {
                                 var sa = server.clients.get("Alex").sc.getRemoteAddress();
                                 System.out.println("==> "+sa);
@@ -109,6 +113,12 @@ public class ClientSession {
                             System.out.println("File list request");
                             server.sendFilesList(this);
                         }
+
+                        case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST -> {
+                            System.out.println("File download request" + ((FileDownloadReq) trame));
+                            server.sendFileInfo(((FileDownloadReq) trame), this);
+                        }
+
                     }
                     return;
                 case REFILL:

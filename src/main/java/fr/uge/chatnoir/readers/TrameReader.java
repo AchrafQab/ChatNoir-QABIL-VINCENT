@@ -4,9 +4,7 @@ package fr.uge.chatnoir.readers;
 import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
-import fr.uge.chatnoir.protocol.file.FileShare;
-import fr.uge.chatnoir.protocol.file.GetAllFileReq;
-import fr.uge.chatnoir.protocol.file.GetAllFileRes;
+import fr.uge.chatnoir.protocol.file.*;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
@@ -19,7 +17,8 @@ public class TrameReader implements Reader<Trame> {
     private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
     private final Reader<FileShare> fileShareReader = new FileShareReader();
     private final Reader<GetAllFileRes> getAllFileReader = new GetAllFileReader();
-
+    private final Reader<FileDownloadReq> fileDownloadReqReader = new FileDownloadRequestReader();
+    private final Reader<FileDownloadRes> fileDownloadResReader = new FileDownloadResponseReader();
 
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
@@ -128,6 +127,28 @@ public class TrameReader implements Reader<Trame> {
                         break;
 
 
+                    case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST:
+                        var fileDownloadReqReaderState = fileDownloadReqReader.process(buffer);
+
+                        if (fileDownloadReqReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileDownloadReqReader.get();
+                        } else if (fileDownloadReqReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileDownloadReqReaderState;
+                        }
+                        break;
+
+                    case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE:
+                        var fileDownloadResReaderState = fileDownloadResReader.process(buffer);
+
+                        if (fileDownloadResReaderState == Reader.ProcessStatus.DONE) {
+
+                            value = fileDownloadResReader.get();
+                        } else if (fileDownloadResReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileDownloadResReaderState;
+                        }
+                        break;
 
 
 
@@ -166,6 +187,8 @@ public class TrameReader implements Reader<Trame> {
         internalBuffer.clear();
         fileShareReader.reset();
         getAllFileReader.reset();
+        fileDownloadReqReader.reset();
+        fileDownloadResReader.reset();
 
     }
 

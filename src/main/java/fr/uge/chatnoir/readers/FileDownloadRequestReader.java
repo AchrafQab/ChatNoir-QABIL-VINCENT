@@ -1,33 +1,22 @@
 package fr.uge.chatnoir.readers;
 
 import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.file.FileDownloadReq;
+import fr.uge.chatnoir.protocol.file.FileInfo;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FileDownloadRequestReader implements Reader<String> {
-    private enum State { DONE, WAITING_MODE, WAITING_FILENAME, WAITING_RESPONSE, WAITING_LENGTH, WAITING_NUM_CLIENTS, WAITING_IP_PORT, ERROR }
+public class FileDownloadRequestReader implements Reader<FileDownloadReq> {
+    private enum State { DONE, WAITING_MODE, WAITING_FILE, ERROR }
 
     private State state = State.WAITING_MODE;
     private final IntReader intReader = new IntReader();
-    private final StringReader stringReader = new StringReader();
-    private int mode;
-    private String fileName;
-    private int responseCode;
-    private int fileLength;
-    private int numClients;
-    private final List<ClientInfo> clients = new ArrayList<>();
-
-    private static class ClientInfo {
-        String ip;
-        int port;
-
-        ClientInfo(String ip, int port) {
-            this.ip = ip;
-            this.port = port;
-        }
-    }
+    private final FileReader fileReader = new FileReader();
+    private int download_mode;
+    private FileInfo fileInfo;
+    private FileDownloadReq value;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -35,102 +24,54 @@ public class FileDownloadRequestReader implements Reader<String> {
             throw new IllegalStateException();
         }
 
-        switch (state) {
-            case WAITING_MODE:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    mode = intReader.get();
-                    stringReader.reset();
-                    state = State.WAITING_FILENAME;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
+        if (state == State.WAITING_MODE) {
+            var read = intReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
 
-            case WAITING_FILENAME:
-                if (stringReader.process(buffer) == ProcessStatus.DONE) {
-                    fileName = stringReader.get();
-                    state = State.WAITING_RESPONSE;
-                    intReader.reset();
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_RESPONSE:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    responseCode = intReader.get();
-                    if (responseCode != 200) {
-                        state = State.DONE;
-                        return ProcessStatus.DONE;
-                    }
-                    state = State.WAITING_LENGTH;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_LENGTH:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    fileLength = intReader.get();
-                    state = State.WAITING_NUM_CLIENTS;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_NUM_CLIENTS:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    numClients = intReader.get();
-                    state = State.WAITING_IP_PORT;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_IP_PORT:
-                while (clients.size() < numClients) {
-                    StringReader ipReader = new StringReader();
-                    IntReader portReader = new IntReader();
-                    if (ipReader.process(buffer) == ProcessStatus.DONE && portReader.process(buffer) == ProcessStatus.DONE) {
-                        clients.add(new ClientInfo(ipReader.get(), portReader.get()));
-                    } else {
-                        return ProcessStatus.REFILL;
-                    }
-                }
-                state = State.DONE;
-                break;
-
-            default:
-                throw new IllegalStateException();
+            download_mode = intReader.get();
+            intReader.reset();
+            state = State.WAITING_FILE;
         }
 
+        if (state == State.WAITING_FILE) {
+            var read = fileReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+
+            fileInfo = fileReader.get();
+            fileReader.reset();
+
+        }
+        value = new FileDownloadReq(fileInfo, download_mode);
+        state = State.DONE;
         return ProcessStatus.DONE;
     }
 
     @Override
-    public String get() {
+    public FileDownloadReq get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("Mode: ").append(mode).append(", Filename: ").append(fileName).append(", Response: ").append(responseCode)
-                .append(", File Length: ").append(fileLength).append(", Clients: ");
-        for (ClientInfo client : clients) {
-            sb.append(client.ip).append(":").append(client.port).append(" ");
-        }
-        return sb.toString();
+
+        return value;
     }
 
     @Override
     public void reset() {
         state = State.WAITING_MODE;
         intReader.reset();
-        stringReader.reset();
-        mode = 0;
-        fileName = null;
-        responseCode = 0;
-        fileLength = 0;
-        numClients = 0;
-        clients.clear();
+        fileReader.reset();
+
     }
 }

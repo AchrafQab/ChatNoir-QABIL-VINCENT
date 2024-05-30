@@ -4,10 +4,7 @@ import fr.uge.chatnoir.protocol.ChatMessageProtocol;
 import fr.uge.chatnoir.protocol.Trame;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
-import fr.uge.chatnoir.protocol.file.FileInfo;
-import fr.uge.chatnoir.protocol.file.FileShare;
-import fr.uge.chatnoir.protocol.file.GetAllFileReq;
-import fr.uge.chatnoir.protocol.file.GetAllFileRes;
+import fr.uge.chatnoir.protocol.file.*;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
@@ -25,10 +22,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Objects;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 
@@ -40,11 +34,11 @@ public class Client {
         private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
         private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
         private final ArrayDeque<Trame> queue = new ArrayDeque<>();
-        private Charset UTF8 = StandardCharsets.UTF_8;
+        private final Charset UTF8 = StandardCharsets.UTF_8;
         private final PublicMessageReader publicMessageReader = new PublicMessageReader();
         private final Reader<Trame> trameReader = new TrameReader();
         private boolean closed = false;
-
+        private List<FileInfo> files = new ArrayList<FileInfo>();
 
         private Context(SelectionKey key) {
             this.key = key;
@@ -80,6 +74,11 @@ public class Client {
 
                             case ChatMessageProtocol.FILE_LIST_RESPONSE -> {
                                 System.out.println(((GetAllFileRes) value));
+                                files = ((GetAllFileRes) value).files();
+                            }
+
+                            case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE -> {
+                               System.out.println("File download response => "+((FileDownloadRes) value));
                             }
                         }
                         trameReader.reset();
@@ -250,7 +249,8 @@ public class Client {
                 System.out.println("2. Envoyer un message privé");
                 System.out.println("3. Partager un fichier");
                 System.out.println("4. Voir les fichiers partagés");
-                System.out.println("5. Quitter");
+                System.out.println("5. Télécharger un fichier");
+                System.out.println("6. Quitter");
 
                 if (scanner.hasNextLine()) {
                     var input = scanner.nextLine();
@@ -296,6 +296,26 @@ public class Client {
                             break;
 
                         case "5":
+                            // Select file by names in files list
+                            System.out.print("Entrez le nom du fichier: ");
+                            if (scanner.hasNextLine()) {
+                                var fileName = scanner.nextLine();
+                                var file = uniqueContext.files.stream().filter(f -> f.title.equals(fileName)).findFirst();
+                                if (file.isPresent()) {
+                                    System.out.println("Entrez votre mode de téléchargement: (1 caché, 2 visible)");
+                                    if (scanner.hasNextLine()) {
+                                        var mode = scanner.nextLine();
+                                        sendCommand(new FileDownloadReq(file.get(), Integer.parseInt(mode)));
+                                    } else {
+                                        System.out.println("Fichier non trouvé ");
+                                    }
+                                } else {
+                                    System.out.println("Fichier non trouvé (essayez de voir les fichiers partagés puis réessayer)");
+                                }
+                            }
+                            break;
+
+                        case "6":
                             System.out.println("Arrêt de la console...");
                             running = false;
                             break;

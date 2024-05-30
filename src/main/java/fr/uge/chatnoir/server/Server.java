@@ -1,5 +1,7 @@
 package fr.uge.chatnoir.server;
 
+import fr.uge.chatnoir.protocol.file.FileDownloadReq;
+import fr.uge.chatnoir.protocol.file.FileDownloadRes;
 import fr.uge.chatnoir.protocol.file.FileInfo;
 import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
@@ -148,7 +150,30 @@ public class Server {
             System.out.println(fileRegistry);
         }
     }
+    public void sendFileInfo(FileDownloadReq trame, ClientSession clientSession) {
+        synchronized (lock) {
+            FileInfo fileInfo = trame.fileInfo();
+            List<ClientSession> clients = fileRegistry.get(fileInfo);
+            if (clients == null) {
+                clientSession.queueTrame(new FileDownloadRes(new ArrayList<>()));
+            } else {
+                List<String> ips = new ArrayList<>();
+                for (ClientSession client : clients) {
+                    try {
+                        InetSocketAddress remoteAddress = (InetSocketAddress) client.sc.getRemoteAddress();
+                        String ipAddress = remoteAddress.getAddress().getHostAddress();
+                        ips.add(ipAddress);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                clientSession.queueTrame(new FileDownloadRes(ips));
+            }
 
+        }
+
+
+    }
     /*
     public void unregisterFiles(String nickname) {
         synchronized (lock) {
@@ -176,6 +201,7 @@ public class Server {
     public static void main(String[] args) throws IOException {
         new Server().launch();
     }
+
 
 
 }
