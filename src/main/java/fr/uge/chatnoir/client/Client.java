@@ -14,6 +14,7 @@ import fr.uge.chatnoir.readers.TrameReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
@@ -21,7 +22,9 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
@@ -35,10 +38,10 @@ public class Client {
         private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
         private final ArrayDeque<Trame> queue = new ArrayDeque<>();
         private final Charset UTF8 = StandardCharsets.UTF_8;
-        private final PublicMessageReader publicMessageReader = new PublicMessageReader();
         private final Reader<Trame> trameReader = new TrameReader();
         private boolean closed = false;
         private List<FileInfo> files = new ArrayList<FileInfo>();
+
 
         private Context(SelectionKey key) {
             this.key = key;
@@ -52,9 +55,10 @@ public class Client {
          * and after the call
          *
          */
-        private void processIn() {
+        private void processIn() throws IOException {
             // TODO
             for (;;) {
+                System.out.println("process in");
                 Reader.ProcessStatus status = trameReader.process(bufferIn);
                 switch (status) {
                     case DONE:
@@ -63,6 +67,7 @@ public class Client {
                             case ChatMessageProtocol.AUTH_RESPONSE -> {
                                 if(((AuthResTrame) value).code() == 200){
                                     ((Client) key.attachment()).console.start();
+                                    ((Client) key.attachment()).clientServerStart.start();
                                 }else{
                                     System.out.println("Echec : "+((AuthResTrame) value).code());
                                 }
@@ -81,8 +86,14 @@ public class Client {
                                 files = ((GetAllFileRes) value).files();
                             }
 
+                            case ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE -> {
+                               System.out.println("File download info response => "+((FileDownloadInfoRes) value));
+                               ((Client) key.attachment()).connectToClientServer((FileDownloadInfoRes) value);
+                            }
+
                             case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE -> {
-                               System.out.println("File download response => "+((FileDownloadRes) value));
+                                System.out.println("File download response => "+((FileDownloadRes) value));
+                                ((Client) key.attachment()).createFile(((FileDownloadRes) value));
                             }
                         }
                         trameReader.reset();
@@ -165,6 +176,7 @@ public class Client {
 
         private void silentlyClose() {
             try {
+                key.cancel();
                 sc.close();
             } catch (IOException e) {
                 // ignore exception
@@ -183,7 +195,7 @@ public class Client {
             // TODO
             closed = (sc.read(bufferIn)) == -1;
             processIn();
-            updateInterestOps();
+            //updateInterestOps();
         }
 
         /**
@@ -210,29 +222,42 @@ public class Client {
             if (!sc.finishConnect())
                 return; // the selector gave a bad hint
 
-
+            System.out.println("Connected to server");
             key.interestOps(SelectionKey.OP_READ);
         }
     }
 
+
+
     private static int BUFFER_SIZE = 10_000;
     private static Logger logger = Logger.getLogger(Client.class.getName());
     private final ArrayBlockingQueue<Trame> blockQueue = new ArrayBlockingQueue<Trame>(10);
+    private final ArrayBlockingQueue<Trame> blockQueuePeer = new ArrayBlockingQueue<Trame>(10);
     private final SocketChannel sc;
     private final Selector selector;
+    private final Selector selectorPeer;
     private final InetSocketAddress serverAddress;
     private final String login;
     private Boolean running = true;
     private final Thread console;
+    private final Thread clientServerStart;
     private final Thread auth;
     private Context uniqueContext;
     private final Object lock = new Object();
+    private final Object lockPeer = new Object();
+    private ClientServer clientServer;
+    private FileInfo requestedFile;
+    private Context peerContext;
+
+
 
     public Client(String login, InetSocketAddress serverAddress) throws IOException {
         this.serverAddress = serverAddress;
         this.login = login;
+
         this.sc = SocketChannel.open();
         this.selector = Selector.open();
+        this.selectorPeer = Selector.open();
         this.console = Thread.ofPlatform().unstarted(this::consoleRun);
         this.auth = Thread.ofPlatform().unstarted(() -> {
             try {
@@ -241,7 +266,14 @@ public class Client {
                 throw new RuntimeException(e);
             }
         });
-
+        this.clientServerStart = Thread.ofPlatform().unstarted(() -> {
+            try {
+                this.clientServer = new ClientServer();
+               clientServer.launch();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private void consoleRun() {
@@ -289,10 +321,9 @@ public class Client {
                                 }
                                 var file = new FileInfo(Path.of(path));
                                 files.add(file);
-                                // sendCommand(new FileShare(file));
                             }
                             System.out.println(files);
-                            sendCommand(new FileShare(files));
+                            sendCommand(new FileShare(files, clientServer.PORT));
                             break;
 
                         case "4":
@@ -305,11 +336,13 @@ public class Client {
                             if (scanner.hasNextLine()) {
                                 var fileName = scanner.nextLine();
                                 var file = uniqueContext.files.stream().filter(f -> f.title.equals(fileName)).findFirst();
+
                                 if (file.isPresent()) {
+                                    requestedFile = file.get();
                                     System.out.println("Entrez votre mode de téléchargement: (1 caché, 2 visible)");
                                     if (scanner.hasNextLine()) {
                                         var mode = scanner.nextLine();
-                                        sendCommand(new FileDownloadReq(file.get(), Integer.parseInt(mode)));
+                                        sendCommand(new FileDownloadInfoReq(file.get(), Integer.parseInt(mode)));
                                     } else {
                                         System.out.println("Fichier non trouvé ");
                                     }
@@ -353,6 +386,17 @@ public class Client {
 
     }
 
+    private void sendCommandPeer(Trame trame) throws InterruptedException {
+        // TODO
+        Objects.requireNonNull(trame);
+        synchronized (lockPeer) {
+            System.out.println("send command ==> "+trame);
+            blockQueuePeer.add(trame);
+            selectorPeer.wakeup();
+        }
+
+    }
+
     /**
      * Processes the command from the BlockingQueue
      */
@@ -371,6 +415,22 @@ public class Client {
 
     }
 
+    private void processCommandsPeer() {
+        // TODO
+
+        synchronized(lockPeer) {
+            Trame trame = blockQueuePeer.poll();
+            if(trame != null) {
+                // System.out.println("process ==> "+ trame);
+                peerContext.queueTrame(trame);
+            }
+
+        }
+
+    }
+
+
+
     public void launch() throws IOException {
         sc.configureBlocking(false);
         var key = sc.register(selector, SelectionKey.OP_CONNECT);
@@ -384,7 +444,6 @@ public class Client {
 
         while (!Thread.interrupted() && running) {
             try {
-
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -410,12 +469,102 @@ public class Client {
         }
     }
 
+    private void treatKeyPeer(SelectionKey key) {
+        try {
+            if (key.isValid() && key.isConnectable()) {
+                peerContext.doConnect();
+            }
+            if (key.isValid() && key.isWritable()) {
+                peerContext.doWrite();
+            }
+            if (key.isValid() && key.isReadable()) {
+                peerContext.doRead();
+            }
+        } catch (IOException ioe) {
+            // lambda call in select requires to tunnel IOException
+            throw new UncheckedIOException(ioe);
+        }
+    }
+
+
+
     private void silentlyClose(SelectionKey key) {
         Channel sc = (Channel) key.channel();
         try {
             sc.close();
         } catch (IOException e) {
             // ignore exception
+        }
+    }
+    public void createFile(FileDownloadRes trame) {
+
+        // Créez un chemin de fichier dans le répertoire actuel
+        Path filePath = Path.of("C:/Users/jjlac/OneDrive/Bureau/projet/ChatNoir-QABIL-VINCENT/src/main/java/fr/uge/chatnoir/download/"+trame.title());
+
+
+        try {
+            // Écrivez le contenu dans le nouveau fichier
+            Files.write(filePath, trame.content().getBytes(), StandardOpenOption.CREATE_NEW);
+
+            System.out.println("Fichier créé : " + filePath.toAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Erreur lors de la création du fichier : " + e.getMessage());
+        }
+
+
+    }
+    private void connectToClientServer(FileDownloadInfoRes trame) {
+        try {
+            for (String ipPort : trame.ips()) {
+                String[] parts = ipPort.split(":");
+                SocketChannel clientChannel = SocketChannel.open();
+
+                clientChannel.configureBlocking(false);
+                var key = clientChannel.register(selectorPeer, SelectionKey.OP_CONNECT);
+                peerContext = new Context(key);
+                key.attach(this);
+                clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
+
+                sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size));
+
+
+                while (!Thread.interrupted() && running) {
+                    try {
+                        selectorPeer.select(this::treatKeyPeer);
+                        processCommandsPeer();
+                    } catch (UncheckedIOException tunneled) {
+                        throw tunneled.getCause();
+                    }
+                }
+
+
+                /*
+                if(clientChannel.isConnected()){
+                    System.out.println("Connected to client server at " + ip + ":" + port);
+                    //sendCommand(new FileDownloadReq(requestedFile, 0, requestedFile.size));
+                    // send file download request to client server
+                    //
+                    System.out.println("Sending file download request to client server");
+                    //clientChannel.write(new FileDownloadReq(requestedFile, 0, requestedFile.size).toByteBuffer(StandardCharsets.UTF_8));
+                    //
+                    this.peerContext.queueTrame(new FileDownloadReq(requestedFile, 0, requestedFile.size));
+                    this.peerContext.processOut();
+                    this.peerContext.updateInterestOps();
+                    this.peerContext.doWrite();
+
+
+
+                }
+                */
+
+
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to connect to client server: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid port number: " + e.getMessage());
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -428,7 +577,10 @@ public class Client {
 
 
         new Client(args[0], new InetSocketAddress(args[1], Integer.parseInt(args[2]))).launch();
+
     }
+
+
 
     private static void usage() {
         System.out.println("Usage : ClientChat login hostname port");

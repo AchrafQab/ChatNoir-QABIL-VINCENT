@@ -17,8 +17,10 @@ public class TrameReader implements Reader<Trame> {
     private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
     private final Reader<FileShare> fileShareReader = new FileShareReader();
     private final Reader<GetAllFileRes> getAllFileReader = new GetAllFileReader();
-    private final Reader<FileDownloadReq> fileDownloadReqReader = new FileDownloadRequestReader();
-    private final Reader<FileDownloadRes> fileDownloadResReader = new FileDownloadResponseReader();
+    private final Reader<FileDownloadInfoReq> fileDownloadInfoReqReader = new FileDownloadInfoRequestReader();
+    private final Reader<FileDownloadInfoRes> fileDownloadInfoResReader = new FileDownloadInfoResponseReader();
+    private final Reader<FileDownloadReq> fileDownloadRequestReader = new FileDownloadRequestReader();
+    private final Reader<FileDownloadRes> fileDownloadResponseReader = new FileDownloadResponseReader();
 
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
@@ -127,29 +129,50 @@ public class TrameReader implements Reader<Trame> {
                         break;
 
 
-                    case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST:
-                        var fileDownloadReqReaderState = fileDownloadReqReader.process(buffer);
+                    case ChatMessageProtocol.FILE_DOWNLOAD_INFO_REQUEST:
+                        var fileDownloadInfoReqReaderState = fileDownloadInfoReqReader.process(buffer);
 
-                        if (fileDownloadReqReaderState == Reader.ProcessStatus.DONE) {
-                            value = fileDownloadReqReader.get();
-                        } else if (fileDownloadReqReaderState == Reader.ProcessStatus.ERROR) {
+                        if (fileDownloadInfoReqReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileDownloadInfoReqReader.get();
+                        } else if (fileDownloadInfoReqReaderState == Reader.ProcessStatus.ERROR) {
                             buffer.clear();
-                            return fileDownloadReqReaderState;
+                            return fileDownloadInfoReqReaderState;
+                        }
+                        break;
+
+                    case ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE:
+                        var fileDownloadInfoResReaderState = fileDownloadInfoResReader.process(buffer);
+
+                        if (fileDownloadInfoResReaderState == Reader.ProcessStatus.DONE) {
+
+                            value = fileDownloadInfoResReader.get();
+                        } else if (fileDownloadInfoResReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileDownloadInfoResReaderState;
+                        }
+                        break;
+                    case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST:
+                        var fileDownloadRequestReaderState = fileDownloadRequestReader.process(buffer);
+
+                        if (fileDownloadRequestReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileDownloadRequestReader.get();
+                        } else if (fileDownloadRequestReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileDownloadRequestReaderState;
                         }
                         break;
 
                     case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE:
-                        var fileDownloadResReaderState = fileDownloadResReader.process(buffer);
 
-                        if (fileDownloadResReaderState == Reader.ProcessStatus.DONE) {
+                        var fileDownloadResponseReaderState = fileDownloadResponseReader.process(buffer);
 
-                            value = fileDownloadResReader.get();
-                        } else if (fileDownloadResReaderState == Reader.ProcessStatus.ERROR) {
+                        if (fileDownloadResponseReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileDownloadResponseReader.get();
+                        } else if (fileDownloadResponseReaderState == Reader.ProcessStatus.ERROR) {
                             buffer.clear();
-                            return fileDownloadResReaderState;
+                            return fileDownloadResponseReaderState;
                         }
                         break;
-
 
 
                     default:
@@ -187,8 +210,10 @@ public class TrameReader implements Reader<Trame> {
         internalBuffer.clear();
         fileShareReader.reset();
         getAllFileReader.reset();
-        fileDownloadReqReader.reset();
-        fileDownloadResReader.reset();
+        fileDownloadInfoReqReader.reset();
+        fileDownloadInfoResReader.reset();
+        fileDownloadRequestReader.reset();
+        fileDownloadResponseReader.reset();
 
     }
 

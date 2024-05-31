@@ -1,29 +1,29 @@
 package fr.uge.chatnoir.readers;
 
 import fr.uge.chatnoir.protocol.Reader;
-import fr.uge.chatnoir.protocol.file.FileDownloadReq;
-import fr.uge.chatnoir.protocol.file.FileDownloadRes;
+import fr.uge.chatnoir.protocol.file.FileDownloadInfoReq;
 import fr.uge.chatnoir.protocol.file.FileInfo;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 
-public class FileDownloadResponseReader implements Reader<FileDownloadRes> {
-    private enum State { DONE, WAITING_TITLE, WAITING_FILE, ERROR }
+public class FileDownloadInfoRequestReader implements Reader<FileDownloadInfoReq> {
+    private enum State { DONE, WAITING_MODE, WAITING_FILE, ERROR }
 
-    private State state = State.WAITING_TITLE;
-    private final StringReader stringReader = new StringReader();
-    private String file;
-    private String title;
-    private FileDownloadRes value;
+    private State state = State.WAITING_MODE;
+    private final IntReader intReader = new IntReader();
+    private final FileReader fileReader = new FileReader();
+    private int download_mode;
+    private FileInfo fileInfo;
+    private FileDownloadInfoReq value;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
         if (state == State.DONE || state == State.ERROR) {
             throw new IllegalStateException();
         }
-        if(state == State.WAITING_TITLE){
-            var read = stringReader.process(buffer);
+
+        if (state == State.WAITING_MODE) {
+            var read = intReader.process(buffer);
             if (read == ProcessStatus.ERROR) {
                 state = State.ERROR;
                 return ProcessStatus.ERROR;
@@ -31,12 +31,14 @@ public class FileDownloadResponseReader implements Reader<FileDownloadRes> {
             if (read == ProcessStatus.REFILL) {
                 return ProcessStatus.REFILL;
             }
-            title = stringReader.get();
-            stringReader.reset();
+
+            download_mode = intReader.get();
+            intReader.reset();
             state = State.WAITING_FILE;
         }
-        if(state == State.WAITING_FILE){
-            var read = stringReader.process(buffer);
+
+        if (state == State.WAITING_FILE) {
+            var read = fileReader.process(buffer);
             if (read == ProcessStatus.ERROR) {
                 state = State.ERROR;
                 return ProcessStatus.ERROR;
@@ -44,18 +46,18 @@ public class FileDownloadResponseReader implements Reader<FileDownloadRes> {
             if (read == ProcessStatus.REFILL) {
                 return ProcessStatus.REFILL;
             }
-            file = stringReader.get();
-            stringReader.reset();
-            state = State.DONE;
+
+            fileInfo = fileReader.get();
+            fileReader.reset();
+
         }
-
-
-        value = new FileDownloadRes(title, file);
+        value = new FileDownloadInfoReq(fileInfo, download_mode);
+        state = State.DONE;
         return ProcessStatus.DONE;
     }
 
     @Override
-    public FileDownloadRes get() {
+    public FileDownloadInfoReq get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
@@ -65,8 +67,9 @@ public class FileDownloadResponseReader implements Reader<FileDownloadRes> {
 
     @Override
     public void reset() {
-        state = State.WAITING_TITLE;
-        stringReader.reset();
+        state = State.WAITING_MODE;
+        intReader.reset();
+        fileReader.reset();
 
     }
 }

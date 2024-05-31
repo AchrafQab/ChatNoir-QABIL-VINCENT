@@ -1,7 +1,7 @@
 package fr.uge.chatnoir.server;
 
-import fr.uge.chatnoir.protocol.file.FileDownloadReq;
-import fr.uge.chatnoir.protocol.file.FileDownloadRes;
+import fr.uge.chatnoir.protocol.file.FileDownloadInfoReq;
+import fr.uge.chatnoir.protocol.file.FileDownloadInfoRes;
 import fr.uge.chatnoir.protocol.file.FileInfo;
 import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
@@ -21,7 +21,7 @@ public class Server {
     private static final int PORT = 2002;
     private static final Logger logger = Logger.getLogger(Server.class.getName());
     public final Map<String, ClientSession> clients = new HashMap<>();
-    private final Map<FileInfo, List<ClientSession>> fileRegistry = new HashMap<FileInfo, List<ClientSession>>();
+    private final Map<FileInfo, HashMap<ClientSession, Integer>> fileRegistry = new HashMap<FileInfo, HashMap<ClientSession, Integer>>();
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
     private final Object lock = new Object();
@@ -101,11 +101,14 @@ public class Server {
             System.out.println("remove ==> "+client.nickname);
             clients.remove(client.nickname);
             // remove client from all array list in fileRegistry
-            fileRegistry.entrySet().removeIf(entry -> {
-                List<ClientSession> clientSessions = entry.getValue();
-                clientSessions.remove(client);
-                return clientSessions.isEmpty();
-            });
+            for (Map.Entry<FileInfo, HashMap<ClientSession, Integer>> entry : fileRegistry.entrySet()) {
+                entry.getValue().remove(client);
+                if (entry.getValue().isEmpty()) {
+                    fileRegistry.remove(entry.getKey());
+                }
+            }
+
+            System.out.println(fileRegistry);
         }
     }
 
@@ -136,38 +139,44 @@ public class Server {
         }
     }
 
-    public void registerFiles(List<FileInfo> files, ClientSession client) {
+    public void registerFiles(List<FileInfo> files, ClientSession client, Integer port) {
         synchronized (lock) {
             for (FileInfo file : files) {
                 if (!fileRegistry.containsKey(file)) {
-                    fileRegistry.put(file, new ArrayList<>());
+                    fileRegistry.put(file, new HashMap<>());
                 }
-                //check if client is already in the list
-                if (!fileRegistry.get(file).contains(client)) {
-                    fileRegistry.get(file).add(client);
+                //check if client is already in the hashmap
+                if (fileRegistry.get(file).containsKey(client)) {
+                    fileRegistry.get(file).replace(client, port);
+                } else {
+                    fileRegistry.get(file).put(client, port);
                 }
             }
             System.out.println(fileRegistry);
         }
     }
-    public void sendFileInfo(FileDownloadReq trame, ClientSession clientSession) {
+    public void sendFileInfo(FileDownloadInfoReq trame, ClientSession clientSession) {
         synchronized (lock) {
             FileInfo fileInfo = trame.fileInfo();
-            List<ClientSession> clients = fileRegistry.get(fileInfo);
+            HashMap<ClientSession, Integer> clients = fileRegistry.get(fileInfo);
             if (clients == null) {
-                clientSession.queueTrame(new FileDownloadRes(new ArrayList<>()));
+                clientSession.queueTrame(new FileDownloadInfoRes(new ArrayList<>()));
             } else {
                 List<String> ips = new ArrayList<>();
-                for (ClientSession client : clients) {
+                for (Map.Entry<ClientSession, Integer> entry : clients.entrySet()) {
+                    //ips.add(entry.getKey().sc.getRemoteAddress().toString());
+
+                    System.out.println("==> "+entry);
+
+                    //get ip address from entry.getKey().sc.getRemoteAddress().getAddress().getHostAddress() and concat with port
                     try {
-                        InetSocketAddress remoteAddress = (InetSocketAddress) client.sc.getRemoteAddress();
-                        String ipAddress = remoteAddress.getAddress().getHostAddress();
-                        ips.add(ipAddress);
+                        ips.add(((InetSocketAddress) entry.getKey().sc.getRemoteAddress()).getAddress().getHostAddress() + ":" + entry.getValue());
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
+
                 }
-                clientSession.queueTrame(new FileDownloadRes(ips));
+                clientSession.queueTrame(new FileDownloadInfoRes(ips));
             }
 
         }

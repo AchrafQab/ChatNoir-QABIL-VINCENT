@@ -1,13 +1,11 @@
-package fr.uge.chatnoir.server;
+package fr.uge.chatnoir.client;
 
-import fr.uge.chatnoir.protocol.*;
-import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
-import fr.uge.chatnoir.protocol.auth.AuthResTrame;
-import fr.uge.chatnoir.protocol.file.FileDownloadInfoReq;
-import fr.uge.chatnoir.protocol.file.FileShare;
-import fr.uge.chatnoir.protocol.message.PrivateMessage;
-import fr.uge.chatnoir.protocol.message.PublicMessage;
-import fr.uge.chatnoir.readers.*;
+import fr.uge.chatnoir.protocol.ChatMessageProtocol;
+import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.Trame;
+import fr.uge.chatnoir.protocol.file.FileDownloadReq;
+import fr.uge.chatnoir.protocol.file.FileDownloadRes;
+import fr.uge.chatnoir.readers.TrameReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,7 +19,7 @@ import java.util.Queue;
 
 public class ClientSession {
     private static final int BUFFER_SIZE = 1024;
-    private final Server server;
+    private final ClientServer clientServer;
     private final SelectionKey key;
     public final SocketChannel sc;
     private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
@@ -33,8 +31,8 @@ public class ClientSession {
 
     private final Reader<Trame> trameReader = new TrameReader();
 
-    public ClientSession(Server server, SelectionKey key, SocketChannel sc) {
-        this.server = server;
+    public ClientSession(ClientServer clientServer, SelectionKey key, SocketChannel sc) {
+        this.clientServer = clientServer;
         this.key = key;
         this.sc = sc;
     }
@@ -43,7 +41,6 @@ public class ClientSession {
         bufferIn.clear();
         int read = sc.read(bufferIn);
         if (read == -1) {
-            server.unregisterClient(this);
             sc.close();
             return;
         }
@@ -73,40 +70,8 @@ public class ClientSession {
                     trameReader.reset();
 
                     switch(trame.protocol()){
-                        case ChatMessageProtocol.AUTH_REQUEST -> {
-                            nickname = ((AuthReqTrame) trame).login();
-                            if(!server.registerClient(nickname, this)){
-                                queueTrame(new AuthResTrame(403));
-
-                            }else{
-                                queueTrame(new AuthResTrame(200));
-                            }
-                            System.out.println("clients ==> "+ server.clients);
-                        }
-
-                        case ChatMessageProtocol.PUBLIC_MESSAGE -> {
-                            server.broadcast(((PublicMessage) trame));
-                        }
-
-                        case ChatMessageProtocol.PRIVATE_MESSAGE -> {
-                            server.sendPrivateMessage(((PrivateMessage) trame));
-                        }
-
-                        case ChatMessageProtocol.FILE_SHARE -> {
-                            System.out.println("file share"+ ((FileShare) trame));
-
-                            server.registerFiles(((FileShare) trame).fileInfos(), this, ((FileShare) trame).port());
-
-                        }
-
-                        case ChatMessageProtocol.FILE_LIST_REQUEST -> {
-                            System.out.println("File list request");
-                            server.sendFilesList(this);
-                        }
-
-                        case ChatMessageProtocol.FILE_DOWNLOAD_INFO_REQUEST -> {
-                            System.out.println("File download request" + ((FileDownloadInfoReq) trame));
-                            server.sendFileInfo(((FileDownloadInfoReq) trame), this);
+                        case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST -> {
+                            clientServer.sendFile(((FileDownloadReq) trame), this);
                         }
 
                     }
@@ -128,30 +93,7 @@ public class ClientSession {
         }
     }
 
-    private void handleAuthRequest(String nickname) {
-        this.nickname = nickname;
-        registered = server.registerClient(nickname, this);
-        /*if (!registered) {
-            queueMessage(new Message("Server", "ERROR: Pseudonyme already in use."));
-        } else {
-            queueMessage(new Message("Server", "Welcome " + nickname + "!"));
-        }*/
-    }
 
-    private void handleFileShare(String fileName) {
-        // handle file announcement
-    }
-
-    private void handleFileUnshared(String fileName) {
-    }
-
-    private void handleFileListRequest() {
-        // handle file list request
-    }
-
-    private void handleFileDownloadRequest(String response) {
-        // handle file download request
-    }
 
     public void queueTrame(Trame trame) {
         queue.add(trame);

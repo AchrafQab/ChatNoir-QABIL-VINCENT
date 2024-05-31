@@ -9,12 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FileShareReader implements Reader<FileShare> {
-    private enum State { DONE, WAITING_FILE_COUNT, WAITING_FILE, ERROR }
+    private enum State { DONE, WAITING_FILE_COUNT, WAITING_FILE, WAITING_PORT, ERROR }
 
     private State state = State.WAITING_FILE_COUNT;
     private final IntReader intReader = new IntReader();
     private final FileReader fileReader = new FileReader();
     private int fileCount;
+    private final List<FileInfo> fileInfos = new ArrayList<>();
 
     private FileShare value;
 
@@ -40,7 +41,7 @@ public class FileShareReader implements Reader<FileShare> {
         }
 
         if (state == State.WAITING_FILE) {
-            List<FileInfo> fileInfos = new ArrayList<>();
+
             for (int i = 0; i < fileCount; i++) {
                 var read = fileReader.process(buffer);
                 if (read == ProcessStatus.ERROR) {
@@ -54,12 +55,26 @@ public class FileShareReader implements Reader<FileShare> {
                 fileInfos.add(fileReader.get());
                 fileReader.reset();
             }
+            state = State.WAITING_PORT;
+        }
 
-            value = new FileShare(fileInfos);
+
+        if (state == State.WAITING_PORT) {
+            var read = intReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+
+            int port = intReader.get();
+            intReader.reset();
+            value = new FileShare(fileInfos, port);
             state = State.DONE;
             return ProcessStatus.DONE;
         }
-
 
 
 
