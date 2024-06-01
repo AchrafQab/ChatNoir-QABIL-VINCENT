@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.logging.Logger;
 
 public class Client {
@@ -63,6 +64,7 @@ public class Client {
                 switch (status) {
                     case DONE:
                         var value = trameReader.get();
+                        System.out.println("value ==> "+value);
                         switch (value.protocol()){
                             case ChatMessageProtocol.AUTH_RESPONSE -> {
                                 if(((AuthResTrame) value).code() == 200){
@@ -87,13 +89,16 @@ public class Client {
                             }
 
                             case ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE -> {
-                               System.out.println("File download info response => "+((FileDownloadInfoRes) value));
-                               ((Client) key.attachment()).connectToClientServer((FileDownloadInfoRes) value);
+
+
+                                    ((Client) key.attachment()).connectToClientServer((FileDownloadInfoRes) value);
+
                             }
 
                             case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE -> {
                                 System.out.println("File download response => "+((FileDownloadRes) value));
                                 ((Client) key.attachment()).createFile(((FileDownloadRes) value));
+                                silentlyClose();
                             }
                         }
                         trameReader.reset();
@@ -134,7 +139,7 @@ public class Client {
                 var bbMsg = trame.toByteBuffer(UTF8);
                 if(bufferOut.remaining() >= bbMsg.remaining()) {
                     queue.poll();
-                    // System.out.println("==> "+trame +" -- "+trame.protocol());
+                    // System.out.println("in buffer ==> "+trame +" -- "+trame.protocol());
                     bufferOut.putInt(trame.protocol());
                     bufferOut.put(bbMsg);
 
@@ -155,13 +160,13 @@ public class Client {
 
         private void updateInterestOps() {
             // TODO
-
             int ops = 0;
 
             if(!closed && bufferIn.hasRemaining()){
                 ops |= SelectionKey.OP_READ;
             }
             if(bufferOut.position() > 0){
+
                 ops |= SelectionKey.OP_WRITE;
             }
             if(ops != 0){
@@ -175,6 +180,7 @@ public class Client {
         }
 
         private void silentlyClose() {
+            System.out.println("silently close");
             try {
                 key.cancel();
                 sc.close();
@@ -232,23 +238,21 @@ public class Client {
     private static int BUFFER_SIZE = 10_000;
     private static Logger logger = Logger.getLogger(Client.class.getName());
     private final ArrayBlockingQueue<Trame> blockQueue = new ArrayBlockingQueue<Trame>(10);
-    private final ArrayBlockingQueue<Trame> blockQueuePeer = new ArrayBlockingQueue<Trame>(10);
     private final SocketChannel sc;
     private final Selector selector;
-    private final Selector selectorPeer;
     private final InetSocketAddress serverAddress;
     private final String login;
     private Boolean running = true;
     private final Thread console;
     private final Thread clientServerStart;
+
     private final Thread auth;
+
     private Context uniqueContext;
     private final Object lock = new Object();
     private final Object lockPeer = new Object();
     private ClientServer clientServer;
     private FileInfo requestedFile;
-    private Context peerContext;
-
 
 
     public Client(String login, InetSocketAddress serverAddress) throws IOException {
@@ -257,7 +261,6 @@ public class Client {
 
         this.sc = SocketChannel.open();
         this.selector = Selector.open();
-        this.selectorPeer = Selector.open();
         this.console = Thread.ofPlatform().unstarted(this::consoleRun);
         this.auth = Thread.ofPlatform().unstarted(() -> {
             try {
@@ -386,13 +389,13 @@ public class Client {
 
     }
 
-    private void sendCommandPeer(Trame trame) throws InterruptedException {
+    private void sendCommandPeer(Trame trame, BlockingQueue<Trame> blockQueue, Selector selector) throws InterruptedException {
         // TODO
         Objects.requireNonNull(trame);
         synchronized (lockPeer) {
             System.out.println("send command ==> "+trame);
-            blockQueuePeer.add(trame);
-            selectorPeer.wakeup();
+            blockQueue.add(trame);
+            selector.wakeup();
         }
 
     }
@@ -415,14 +418,14 @@ public class Client {
 
     }
 
-    private void processCommandsPeer() {
+    private void processCommandsPeer(Context context, BlockingQueue<Trame> blockQueue) {
         // TODO
 
         synchronized(lockPeer) {
-            Trame trame = blockQueuePeer.poll();
+            Trame trame = blockQueue.poll();
             if(trame != null) {
-                // System.out.println("process ==> "+ trame);
-                peerContext.queueTrame(trame);
+                System.out.println("process ==> "+ trame);
+                context.queueTrame(trame);
             }
 
         }
@@ -437,8 +440,6 @@ public class Client {
         uniqueContext = new Context(key);
         key.attach(this);
         sc.connect(serverAddress);
-
-
         auth.start();
         //console.start();
 
@@ -469,17 +470,19 @@ public class Client {
         }
     }
 
-    private void treatKeyPeer(SelectionKey key) {
+    private void treatKeyPeer(SelectionKey key, Context context) {
         try {
             if (key.isValid() && key.isConnectable()) {
-                peerContext.doConnect();
+                context.doConnect();
             }
             if (key.isValid() && key.isWritable()) {
-                peerContext.doWrite();
+                context.doWrite();
             }
             if (key.isValid() && key.isReadable()) {
-                peerContext.doRead();
+                context.doRead();
             }
+
+
         } catch (IOException ioe) {
             // lambda call in select requires to tunnel IOException
             throw new UncheckedIOException(ioe);
@@ -514,58 +517,44 @@ public class Client {
 
     }
     private void connectToClientServer(FileDownloadInfoRes trame) {
-        try {
+        System.out.println("Connecting to client server...");
+
+            System.out.println("check 0"+ trame);
             for (String ipPort : trame.ips()) {
-                String[] parts = ipPort.split(":");
-                SocketChannel clientChannel = SocketChannel.open();
-
-                clientChannel.configureBlocking(false);
-                var key = clientChannel.register(selectorPeer, SelectionKey.OP_CONNECT);
-                peerContext = new Context(key);
-                key.attach(this);
-                clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
-
-                sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size));
-
-
-                while (!Thread.interrupted() && running) {
+                Thread downloadThread = Thread.ofPlatform().start(() -> {
                     try {
-                        selectorPeer.select(this::treatKeyPeer);
-                        processCommandsPeer();
-                    } catch (UncheckedIOException tunneled) {
-                        throw tunneled.getCause();
+                        System.out.println("check 1" + trame);
+                        System.out.println("Connecting to client server: " + ipPort);
+                        String[] parts = ipPort.split(":");
+                        SocketChannel clientChannel = SocketChannel.open();
+                        Selector selector = Selector.open();
+                        clientChannel.configureBlocking(false);
+                        var key = clientChannel.register(selector, SelectionKey.OP_CONNECT);
+                        var context = new Context(key);
+                        key.attach(this);
+                        clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
+                        var blockQueue = new ArrayBlockingQueue<Trame>(10);
+                        sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size), blockQueue, selector);
+                        while (!Thread.interrupted() && running) {
+                            try {
+                                System.out.println("Waiting for client server response...");
+                                selector.select(k -> treatKeyPeer(k, context));
+                                processCommandsPeer(context, blockQueue);
+                            } catch (UncheckedIOException tunneled) {
+                                throw tunneled.getCause();
+                            }
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Failed to connect to client server: " + e.getMessage());
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid port number: " + e.getMessage());
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
-                }
-
-
-                /*
-                if(clientChannel.isConnected()){
-                    System.out.println("Connected to client server at " + ip + ":" + port);
-                    //sendCommand(new FileDownloadReq(requestedFile, 0, requestedFile.size));
-                    // send file download request to client server
-                    //
-                    System.out.println("Sending file download request to client server");
-                    //clientChannel.write(new FileDownloadReq(requestedFile, 0, requestedFile.size).toByteBuffer(StandardCharsets.UTF_8));
-                    //
-                    this.peerContext.queueTrame(new FileDownloadReq(requestedFile, 0, requestedFile.size));
-                    this.peerContext.processOut();
-                    this.peerContext.updateInterestOps();
-                    this.peerContext.doWrite();
-
-
-
-                }
-                */
-
+                });
 
             }
-        } catch (IOException e) {
-            System.err.println("Failed to connect to client server: " + e.getMessage());
-        } catch (NumberFormatException e) {
-            System.err.println("Invalid port number: " + e.getMessage());
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+
     }
 
     public static void main(String[] args) throws NumberFormatException, IOException {
