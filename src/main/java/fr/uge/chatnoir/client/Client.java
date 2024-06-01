@@ -6,7 +6,6 @@ import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 import fr.uge.chatnoir.protocol.file.*;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
-import fr.uge.chatnoir.readers.PublicMessageReader;
 import fr.uge.chatnoir.protocol.Reader;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 import fr.uge.chatnoir.readers.TrameReader;
@@ -14,7 +13,6 @@ import fr.uge.chatnoir.readers.TrameReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
@@ -41,7 +39,7 @@ public class Client {
         private final Charset UTF8 = StandardCharsets.UTF_8;
         private final Reader<Trame> trameReader = new TrameReader();
         private boolean closed = false;
-        private List<FileInfo> files = new ArrayList<FileInfo>();
+        private List<FileInfo> files = new ArrayList<>();
 
 
         private Context(SelectionKey key) {
@@ -51,20 +49,17 @@ public class Client {
 
         /**
          * Process the content of bufferIn
-         *
          * The convention is that bufferIn is in write-mode before the call to process
          * and after the call
          *
          */
-        private void processIn() throws IOException {
+        private void processIn() {
             // TODO
             for (;;) {
-                System.out.println("process in");
                 Reader.ProcessStatus status = trameReader.process(bufferIn);
                 switch (status) {
                     case DONE:
                         var value = trameReader.get();
-                        System.out.println("value ==> "+value);
                         switch (value.protocol()){
                             case ChatMessageProtocol.AUTH_RESPONSE -> {
                                 if(((AuthResTrame) value).code() == 200){
@@ -322,11 +317,25 @@ public class Client {
                                 if(path.isEmpty()){
                                     break;
                                 }
-                                var file = new FileInfo(Path.of(path));
+                                //check if file exists
+                                var check = Path.of(path);
+                                if(!Files.exists(check)){
+                                    System.out.println("Fichier non trouvé");
+                                    continue;
+                                }
+                                var file = new FileInfo(check);
                                 files.add(file);
+
+
+
+                                //var file = new FileInfo(Path.of(path));
+                                //files.add(file);
                             }
-                            System.out.println(files);
-                            sendCommand(new FileShare(files, clientServer.PORT));
+                            if(!files.isEmpty()) {
+                                System.out.println(files);
+                                sendCommand(new FileShare(files, clientServer.PORT));
+                            }
+
                             break;
 
                         case "4":
