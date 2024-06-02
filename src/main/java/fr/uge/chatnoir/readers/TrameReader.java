@@ -16,6 +16,8 @@ public class TrameReader implements Reader<Trame> {
     private final Reader<AuthReqTrame> authRequestReader = new AuthRequestReader();
     private final Reader<AuthResTrame> authResponseReader = new AuthReponseReader();
     private final Reader<FileShare> fileShareReader = new FileShareReader();
+    private final Reader<FileUnShare> fileUnshareReader = new FileUnshareReader();
+
     private final Reader<GetAllFileRes> getAllFileReader = new GetAllFileReader();
     private final Reader<FileDownloadInfoReq> fileDownloadInfoReqReader = new FileDownloadInfoRequestReader();
     private final Reader<FileDownloadInfoRes> fileDownloadInfoResReader = new FileDownloadInfoResponseReader();
@@ -110,6 +112,18 @@ public class TrameReader implements Reader<Trame> {
                             return fileShareReaderState;
                         }
                         break;
+
+                    case ChatMessageProtocol.FILE_UNSHARE:
+                        var fileUnshareReaderState = fileUnshareReader.process(buffer);
+
+                        if (fileUnshareReaderState == Reader.ProcessStatus.DONE) {
+                            value = fileUnshareReader.get();
+                        } else if (fileUnshareReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return fileUnshareReaderState;
+                        }
+                        break;
+
 
 
                     case ChatMessageProtocol.FILE_LIST_REQUEST:

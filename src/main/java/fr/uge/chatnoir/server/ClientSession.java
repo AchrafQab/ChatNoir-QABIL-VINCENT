@@ -5,6 +5,7 @@ import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 import fr.uge.chatnoir.protocol.file.FileDownloadInfoReq;
 import fr.uge.chatnoir.protocol.file.FileShare;
+import fr.uge.chatnoir.protocol.file.FileUnShare;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 import fr.uge.chatnoir.readers.*;
@@ -97,6 +98,12 @@ public class ClientSession {
 
                             server.registerFiles(((FileShare) trame).fileInfos(), this, ((FileShare) trame).port());
 
+                        }
+
+                        case ChatMessageProtocol.FILE_UNSHARE -> {
+                            System.out.println("file unshared"+ ((FileUnShare) trame));
+
+                            server.unregisterFiles(((FileUnShare) trame).fileInfos(), this);
                         }
 
                         case ChatMessageProtocol.FILE_LIST_REQUEST -> {

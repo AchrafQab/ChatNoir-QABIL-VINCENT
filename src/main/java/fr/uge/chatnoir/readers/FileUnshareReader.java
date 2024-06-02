@@ -1,19 +1,22 @@
 package fr.uge.chatnoir.readers;
 
 import fr.uge.chatnoir.protocol.Reader;
+import fr.uge.chatnoir.protocol.file.FileInfo;
+import fr.uge.chatnoir.protocol.file.FileUnShare;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FileUnshareReader implements Reader<List<String>> {
-    private enum State { DONE, WAITING_FILE_COUNT, WAITING_FILE_ID_LENGTH, WAITING_FILE_ID, ERROR }
+public class FileUnshareReader implements Reader<FileUnShare> {
+    private enum State { DONE, WAITING_FILE_COUNT, WAITING_FILE, ERROR }
 
     private State state = State.WAITING_FILE_COUNT;
     private final IntReader intReader = new IntReader();
-    private final StringReader stringReader = new StringReader();
+    private final FileReader fileReader = new FileReader();
     private int fileCount;
-    private final List<String> fileIds = new ArrayList<>();
+    private final List<FileInfo> fileInfos = new ArrayList<>();
+    private FileUnShare value;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -21,70 +24,55 @@ public class FileUnshareReader implements Reader<List<String>> {
             throw new IllegalStateException();
         }
 
-        switch (state) {
-            case WAITING_FILE_COUNT:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    fileCount = intReader.get();
-                    if (fileCount <= 0) {
-                        state = State.ERROR;
-                        return ProcessStatus.ERROR;
-                    }
-                    intReader.reset();
-                    state = State.WAITING_FILE_ID_LENGTH;
-                } else {
+        if (state == State.WAITING_FILE_COUNT) {
+            var read = intReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+
+            fileCount = intReader.get();
+            intReader.reset();
+            state = State.WAITING_FILE;
+        }
+
+        if (state == State.WAITING_FILE) {
+            for (int i = 0; i < fileCount; i++) {
+                var read = fileReader.process(buffer);
+                if (read == ProcessStatus.ERROR) {
+                    state = State.ERROR;
+                    return ProcessStatus.ERROR;
+                }
+                if (read == ProcessStatus.REFILL) {
                     return ProcessStatus.REFILL;
                 }
-                break;
 
-            case WAITING_FILE_ID_LENGTH:
-                if (intReader.process(buffer) == ProcessStatus.DONE) {
-                    int fileIdLength = intReader.get();
-                    if (fileIdLength <= 0 || fileIdLength > 1024) {
-                        state = State.ERROR;
-                        return ProcessStatus.ERROR;
-                    }
-                    stringReader.reset();
-                    state = State.WAITING_FILE_ID;
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            case WAITING_FILE_ID:
-                if (stringReader.process(buffer) == ProcessStatus.DONE) {
-                    fileIds.add(stringReader.get());
-                    intReader.reset();
-                    fileCount--;
-                    if (fileCount > 0) {
-                        state = State.WAITING_FILE_ID_LENGTH;
-                    } else {
-                        state = State.DONE;
-                    }
-                } else {
-                    return ProcessStatus.REFILL;
-                }
-                break;
-
-            default:
-                throw new IllegalStateException();
+                fileInfos.add(fileReader.get());
+                fileReader.reset();
+            }
+            value = new FileUnShare(fileInfos);
+            state = State.DONE;
         }
 
         return ProcessStatus.DONE;
     }
 
     @Override
-    public List<String> get() {
+    public FileUnShare get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }
-        return fileIds;
+        return value;
     }
 
     @Override
     public void reset() {
         state = State.WAITING_FILE_COUNT;
         intReader.reset();
-        stringReader.reset();
-        fileIds.clear();
+        fileReader.reset();
+        fileInfos.clear();
     }
 }

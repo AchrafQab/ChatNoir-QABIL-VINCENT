@@ -5,35 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="432e400d-cb39-4dab-ac90-436212add277" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/Main.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/Client.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/FileDownloader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/SharedFileRegistry.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/protocol/ChatMessageProtocol.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/AuthRequestReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileDownloadRequest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileDownloadRequestReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileListRequestReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileShare.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileShareReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileUnshareReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/IntReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PrivateMessage.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PrivateMessageReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/PublicMessageReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/Reader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/StringReader.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/ClientSession.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Message.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Server.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/util/Helpers.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/test/java/fr/uge/chatnoir/server/ClientSessionTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/protocol/file/FileUnShare.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/Client.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/client/Client.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/download/test.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/upload/test.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/download/test2.txt" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/upload/test2.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/protocol/file/FileInfo.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/protocol/file/FileInfo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileUnshareReader.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/FileUnshareReader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/TrameReader.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/readers/TrameReader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/ClientSession.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/ClientSession.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Server.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/server/Server.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/upload/test.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/fr/uge/chatnoir/upload/test2.txt" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,6 +33,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -61,42 +47,58 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "/Users/achrafqabil/ESIEE/Algo-advanced/ChatNoir/src/main/resources",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CreateClassDialog.RecentsKey">
       <recent name="fr.uge.chatnoir.client" />
     </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/resources" />
+    </key>
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="" />
+    </key>
     <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="fr.uge.chatnoir.protocol.file" />
       <recent name="fr.uge.chatnoir.readers" />
       <recent name="fr.uge.chatnoir.server" />
       <recent name="fr.uge.chatnoir.protocol" />
       <recent name="fr.uge.chatnoir.readers.base" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.Server">
+  <component name="RunManager" selected="Application.Client">
     <configuration name="Client" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="fr.uge.chatnoir.client.Client" />
       <module name="ChatNoir" />
-      <option name="PROGRAM_PARAMETERS" value="achraf" />
+      <option name="PROGRAM_PARAMETERS" value="achraf localhost 2002" />
       <extension name="coverage">
         <pattern>
           <option name="PATTERN" value="fr.uge.chatnoir.client.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Client2" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="fr.uge.chatnoir.client.Client" />
+      <module name="ChatNoir" />
+      <option name="PROGRAM_PARAMETERS" value="ahmed localhost 2002" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -130,6 +132,7 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="Application.Client2" />
       <item itemvalue="Application.Client" />
       <item itemvalue="Application.Server" />
       <item itemvalue="JUnit.ClientSessionTest" />
@@ -153,6 +156,8 @@
       <workItem from="1716476471207" duration="22943000" />
       <workItem from="1716717527023" duration="1980000" />
       <workItem from="1716760660092" duration="8699000" />
+      <workItem from="1717051416213" duration="2353000" />
+      <workItem from="1717326494517" duration="4546000" />
     </task>
     <servers />
   </component>

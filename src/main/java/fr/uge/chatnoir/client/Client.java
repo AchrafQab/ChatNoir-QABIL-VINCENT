@@ -284,7 +284,8 @@ public class Client {
                 System.out.println("3. Partager un fichier");
                 System.out.println("4. Voir les fichiers partagés");
                 System.out.println("5. Télécharger un fichier");
-                System.out.println("6. Quitter");
+                System.out.println("6. Retirer un fichier partagé");
+                System.out.println("7. Quitter");
 
                 if (scanner.hasNextLine()) {
                     var input = scanner.nextLine();
@@ -307,7 +308,7 @@ public class Client {
                                 }
                             }
                             break;
-
+                        /*
                         case "3":
                             System.out.print("Entrez le path du fichier: ");
                             var files = new ArrayList<FileInfo>();
@@ -338,6 +339,31 @@ public class Client {
 
                             break;
 
+                         */
+                        case "3":
+                        String basePath = "src/main/resources/upload/";
+                        var files = new ArrayList<FileInfo>();
+                        while (true) {
+                            System.out.print("Entrez le nom du fichier (ou appuyez sur Entrée pour terminer): ");
+                            var fileName = scanner.nextLine();
+                            if (fileName.isEmpty()) {
+                                break;
+                            }
+                            var fullPath = Path.of(basePath + fileName);
+                            if (!Files.exists(fullPath)) {
+                                System.out.println("Fichier non trouvé");
+                                continue;
+                            }
+                            var file = new FileInfo(fullPath);
+                            files.add(file);
+                        }
+                        if (!files.isEmpty()) {
+                            System.out.println(files);
+                            sendCommand(new FileShare(files, clientServer.PORT));
+                        }
+                        break;
+
+
                         case "4":
                             sendCommand(new GetAllFileReq());
                             break;
@@ -365,6 +391,18 @@ public class Client {
                             break;
 
                         case "6":
+                            System.out.print("Entrez le nom du fichier à retirer: ");
+                            if (scanner.hasNextLine()) {
+                                var fileName = scanner.nextLine();
+                                var file = uniqueContext.files.stream().filter(f -> f.title.equals(fileName)).findFirst();
+                                if (file.isPresent()) {
+                                    sendCommand(new FileUnShare(List.of(file.get())));
+                                } else {
+                                    System.out.println("Fichier non trouvé (essayez de voir les fichiers partagés puis réessayer)");
+                                }
+                            }
+                            break;
+                        case "7":
                             System.out.println("Arrêt de la console...");
                             running = false;
                             break;
@@ -525,6 +563,7 @@ public class Client {
 
 
     }
+    /*
     private void connectToClientServer(FileDownloadInfoRes trame) {
         System.out.println("Connecting to client server...");
 
@@ -565,6 +604,52 @@ public class Client {
             }
 
     }
+
+     */
+
+
+    private void connectToClientServer(FileDownloadInfoRes trame) {
+        System.out.println("Connecting to client server...");
+        System.out.println("check 0" + trame);
+
+        // Utilisez une copie de la liste pour éviter ConcurrentModificationException
+        List<String> ipsCopy = new ArrayList<>(trame.ips());
+
+        for (String ipPort : ipsCopy) {
+            Thread downloadThread = Thread.ofPlatform().start(() -> {
+                try {
+                    System.out.println("check 1" + trame);
+                    System.out.println("Connecting to client server: " + ipPort);
+                    String[] parts = ipPort.split(":");
+                    SocketChannel clientChannel = SocketChannel.open();
+                    Selector selector = Selector.open();
+                    clientChannel.configureBlocking(false);
+                    var key = clientChannel.register(selector, SelectionKey.OP_CONNECT);
+                    var context = new Context(key);
+                    key.attach(this);
+                    clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
+                    var blockQueue = new ArrayBlockingQueue<Trame>(10);
+                    sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size), blockQueue, selector);
+                    while (!Thread.interrupted() && running) {
+                        try {
+                            System.out.println("Waiting for client server response...");
+                            selector.select(k -> treatKeyPeer(k, context));
+                            processCommandsPeer(context, blockQueue);
+                        } catch (UncheckedIOException tunneled) {
+                            throw tunneled.getCause();
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Failed to connect to client server: " + e.getMessage());
+                } catch (NumberFormatException e) {
+                    System.err.println("Invalid port number: " + e.getMessage());
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+    }
+
 
     public static void main(String[] args) throws NumberFormatException, IOException {
         if (args.length != 3) {

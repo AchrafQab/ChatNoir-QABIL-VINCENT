@@ -183,13 +183,22 @@ public class Server {
 
 
     }
-    /*
-    public void unregisterFiles(String nickname) {
+
+
+    public void unregisterFiles(List<FileInfo> files, ClientSession client) {
         synchronized (lock) {
-            fileRegistry.remove(nickname);
+            for (FileInfo file : files) {
+                if (fileRegistry.containsKey(file)) {
+                    fileRegistry.get(file).remove(client);
+                    if (fileRegistry.get(file).isEmpty()) {
+                        fileRegistry.remove(file);
+                    }
+                }
+            }
+            System.out.println(fileRegistry);
         }
     }
-    */
+
 
 /*
     public Map<String, SharedFileRegistry> getFileRegistry() {
