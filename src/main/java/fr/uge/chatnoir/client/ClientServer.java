@@ -84,9 +84,7 @@ public class ClientServer {
 
         //get the real file
 
-
-
-        var file = new File("C:/Users/jjlac/OneDrive/Bureau/projet/ChatNoir-QABIL-VINCENT/src/main/java/fr/uge/chatnoir/upload/"+trame.fileInfo().title);
+        var file = new File("src/main/resources/upload/"+trame.fileInfo().title);
 
         if(!file.exists()){
             System.out.println("file not found");
