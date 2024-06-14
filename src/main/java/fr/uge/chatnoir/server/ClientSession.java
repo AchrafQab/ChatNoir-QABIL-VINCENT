@@ -34,6 +34,8 @@ public class ClientSession {
 
     private final Reader<Trame> trameReader = new TrameReader();
 
+    public int port;
+
     public ClientSession(Server server, SelectionKey key, SocketChannel sc) {
         this.server = server;
         this.key = key;
@@ -76,6 +78,8 @@ public class ClientSession {
                     switch(trame.protocol()){
                         case ChatMessageProtocol.AUTH_REQUEST -> {
                             nickname = ((AuthReqTrame) trame).login();
+                            port = ((AuthReqTrame) trame).port();
+
                             if(!server.registerClient(nickname, this)){
                                 queueTrame(new AuthResTrame(403));
 
@@ -143,21 +147,6 @@ public class ClientSession {
         } else {
             queueMessage(new Message("Server", "Welcome " + nickname + "!"));
         }*/
-    }
-
-    private void handleFileShare(String fileName) {
-        // handle file announcement
-    }
-
-    private void handleFileUnshared(String fileName) {
-    }
-
-    private void handleFileListRequest() {
-        // handle file list request
-    }
-
-    private void handleFileDownloadRequest(String response) {
-        // handle file download request
     }
 
     public void queueTrame(Trame trame) {

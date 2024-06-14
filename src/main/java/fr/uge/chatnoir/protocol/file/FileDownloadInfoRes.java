@@ -7,22 +7,21 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
 
-public record FileDownloadInfoRes(List<String> ips, Integer protocol) implements Trame {
+public record FileDownloadInfoRes(List<String> ips, Integer id, Integer protocol) implements Trame {
 
 
-    public FileDownloadInfoRes(List<String> ips){
-      this(ips, ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE);
+    public FileDownloadInfoRes(List<String> ips, Integer id){
+      this(ips, id, ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE);
     }
 
     @Override
     public ByteBuffer toByteBuffer(Charset charset) {
         int totalSize = Integer.BYTES;
-
         for (String ip : ips) {
             totalSize += Integer.BYTES + charset.encode(ip).remaining();
         }
 
-        var buffer = ByteBuffer.allocate(totalSize);
+        var buffer = ByteBuffer.allocate(totalSize + Integer.BYTES);
 
         buffer.putInt(ips.size());
 
@@ -32,7 +31,10 @@ public record FileDownloadInfoRes(List<String> ips, Integer protocol) implements
             buffer.putInt(bufferIp.remaining());
             buffer.put(bufferIp);
         }
-        //read buffer
+
+
+        buffer.putInt(id);
+
         buffer.flip();
 
 

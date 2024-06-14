@@ -7,11 +7,16 @@ import java.nio.ByteBuffer;
 
 public class AuthRequestReader implements Reader<AuthReqTrame> {
 
-    private enum State { DONE, WAITING_NICKNAME, ERROR }
+    private enum State { DONE, WAITING_NICKNAME, WAITING_PORT, ERROR }
     private State state = State.WAITING_NICKNAME;
     private final StringReader stringReader = new StringReader();
+
+    private final IntReader intReader = new IntReader();
+
     private AuthReqTrame value;
     private String login;
+
+    private int port;
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
@@ -30,12 +35,24 @@ public class AuthRequestReader implements Reader<AuthReqTrame> {
             }
 
             login = stringReader.get();
-            stringReader.reset();
-
+            state = State.WAITING_PORT;
 
         }
 
-        value = new AuthReqTrame(login);
+        if(state == State.WAITING_PORT){
+            var read = intReader.process(buffer);
+            if(read == ProcessStatus.ERROR){
+                state= State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if(read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+            state = AuthRequestReader.State.DONE;
+            port = intReader.get();
+        }
+
+        value = new AuthReqTrame(login, port);
         state = State.DONE;
         return ProcessStatus.DONE;
     }
@@ -52,6 +69,6 @@ public class AuthRequestReader implements Reader<AuthReqTrame> {
     public void reset() {
         state = State.WAITING_NICKNAME;
         stringReader.reset();
-
+        intReader.reset();
     }
 }

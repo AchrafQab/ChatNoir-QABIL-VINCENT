@@ -10,24 +10,28 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
 
-public record FileDownloadRes(String title,String content,Integer protocol) implements Trame {
+public record FileDownloadRes(String title, byte[] content, Integer id, Integer protocol) implements Trame {
 
 
-    public FileDownloadRes( String title, String content){
-      this(title, content, ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE);
+    public FileDownloadRes(String title, byte[] content, Integer id){
+      this(title, content, id, ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE);
     }
 
     @Override
     public ByteBuffer toByteBuffer(Charset charset) {
 
         ByteBuffer titleBuffer = charset.encode(title);
-        ByteBuffer fileBuffer = charset.encode(content);
+        ByteBuffer fileBuffer = ByteBuffer.wrap(content);
 
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES + titleBuffer.remaining() + fileBuffer.remaining());
+
+        ByteBuffer buffer = ByteBuffer.allocate(3 * Integer.BYTES + titleBuffer.remaining() + fileBuffer.remaining());
         buffer.putInt(titleBuffer.remaining());
         buffer.put(titleBuffer);
+        buffer.putInt(id);
+        System.out.println("fileBuffer.remaining() => "+fileBuffer.remaining() );
         buffer.putInt(fileBuffer.remaining());
         buffer.put(fileBuffer);
+        System.out.println("id => "+id);
 
         buffer.flip();
 

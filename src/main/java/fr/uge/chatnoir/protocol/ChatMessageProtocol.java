@@ -13,4 +13,6 @@ public class ChatMessageProtocol {
     public static final int FILE_DOWNLOAD_INFO_RESPONSE = 17;
     public static final int FILE_DOWNLOAD_REQUEST = 9;
     public static final int FILE_DOWNLOAD_RESPONSE= 19;
+
+    public static final int PROXY_REQUEST = 8;
 }

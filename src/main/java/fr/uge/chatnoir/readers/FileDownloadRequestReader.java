@@ -8,13 +8,15 @@ import fr.uge.chatnoir.protocol.file.FileInfo;
 import java.nio.ByteBuffer;
 
 public class FileDownloadRequestReader implements Reader<FileDownloadReq> {
-    private enum State { DONE, WAITING_FILE, WAITING_START, WAITING_END, ERROR }
+    private enum State { DONE, WAITING_FILE, WAITING_START, WAITING_END, WAITING_ID, ERROR }
 
     private State state = State.WAITING_FILE;
     private final IntReader intReader = new IntReader();
     private final FileReader fileReader = new FileReader();
     private int start;
     private int end;
+
+    private int id;
     private FileInfo fileInfo;
     private FileDownloadReq value;
 
@@ -66,10 +68,24 @@ public class FileDownloadRequestReader implements Reader<FileDownloadReq> {
 
             end = intReader.get();
             intReader.reset();
-            state = State.DONE;
+            state = State.WAITING_ID;
         }
 
-        value = new FileDownloadReq(fileInfo, start, end);
+        if (state == State.WAITING_ID) {
+            var read = intReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+
+            id = intReader.get();
+            state = State.DONE;
+
+        }
+        value = new FileDownloadReq(fileInfo, start, end, id);
         return ProcessStatus.DONE;
     }
 

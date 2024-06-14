@@ -6,14 +6,12 @@ import fr.uge.chatnoir.protocol.file.FileInfo;
 import fr.uge.chatnoir.protocol.file.GetAllFileRes;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
+import fr.uge.chatnoir.protocol.proxy.ProxyReq;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -158,33 +156,44 @@ public class Server {
     public void sendFileInfo(FileDownloadInfoReq trame, ClientSession clientSession) {
         synchronized (lock) {
             FileInfo fileInfo = trame.fileInfo();
-            HashMap<ClientSession, Integer> clients = fileRegistry.get(fileInfo);
-            if (clients == null) {
-                clientSession.queueTrame(new FileDownloadInfoRes(new ArrayList<>()));
-            } else {
-                List<String> ips = new ArrayList<>();
-                for (Map.Entry<ClientSession, Integer> entry : clients.entrySet()) {
-                    //ips.add(entry.getKey().sc.getRemoteAddress().toString());
+            var downloadMode = trame.downloadMode();
+            int id = new Random().nextInt(Integer.MAX_VALUE);
+                HashMap<ClientSession, Integer> clientsOfFile = fileRegistry.get(fileInfo);
+                if (clientsOfFile == null) {
+                    clientSession.queueTrame(new FileDownloadInfoRes(new ArrayList<>(), 0));
+                } else {
 
-                    System.out.println("==> "+entry);
+                    List<String> ips = new ArrayList<>();
+                    for (Map.Entry<ClientSession, Integer> entry : clientsOfFile.entrySet()) {
+                        System.out.println("==> " + entry);
+                        try {
+                            if(downloadMode == 1){
+                                ClientSession selectedClient = selectProxy(clientSession, clients, clientsOfFile);
+                                if(selectedClient != null){
 
-                    //get ip address from entry.getKey().sc.getRemoteAddress().getAddress().getHostAddress() and concat with port
-                    try {
-                        ips.add(((InetSocketAddress) entry.getKey().sc.getRemoteAddress()).getAddress().getHostAddress() + ":" + entry.getValue());
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                                    selectedClient.queueTrame(new ProxyReq(((InetSocketAddress) selectedClient.sc.getRemoteAddress()).getAddress().getHostAddress(), ((InetSocketAddress) entry.getKey().sc.getRemoteAddress()).getAddress().getHostAddress(), entry.getValue(), id));
+                                    ips.add(((InetSocketAddress) selectedClient.sc.getRemoteAddress()).getAddress().getHostAddress() + ":" + selectedClient.port);
+                                }
+                            }else{
+                                ips.add(((InetSocketAddress) entry.getKey().sc.getRemoteAddress()).getAddress().getHostAddress() + ":" + entry.getValue());
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-
+                    clientSession.queueTrame(new FileDownloadInfoRes(ips, id));
                 }
-                clientSession.queueTrame(new FileDownloadInfoRes(ips));
             }
-
         }
 
-
+    private ClientSession selectProxy(ClientSession clientRequesting, Map<String, ClientSession> allClients, Map<ClientSession, Integer> fileHosts) {
+        for (ClientSession client : allClients.values()) {
+            if (!client.equals(clientRequesting) && !fileHosts.containsKey(client)) {
+                return client;
+            }
+        }
+        return null;
     }
-
-
     public void unregisterFiles(List<FileInfo> files, ClientSession client) {
         synchronized (lock) {
             for (FileInfo file : files) {
@@ -198,23 +207,6 @@ public class Server {
             System.out.println(fileRegistry);
         }
     }
-
-
-/*
-    public Map<String, SharedFileRegistry> getFileRegistry() {
-        synchronized (lock) {
-            return new HashMap<>(fileRegistry);
-        }
-    }
-
-
-*/
-
-/*
-    {
-        "test.txt"=["127.0.0.1", "128.0.0.1"]
-    }
-*/
 
     public static void main(String[] args) throws IOException {
         new Server().launch();

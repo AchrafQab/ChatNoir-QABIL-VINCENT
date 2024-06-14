@@ -5,6 +5,7 @@ import fr.uge.chatnoir.protocol.*;
 import fr.uge.chatnoir.protocol.auth.AuthReqTrame;
 import fr.uge.chatnoir.protocol.auth.AuthResTrame;
 import fr.uge.chatnoir.protocol.file.*;
+import fr.uge.chatnoir.protocol.proxy.ProxyReq;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
 
@@ -24,6 +25,9 @@ public class TrameReader implements Reader<Trame> {
     private final Reader<FileDownloadReq> fileDownloadRequestReader = new FileDownloadRequestReader();
     private final Reader<FileDownloadRes> fileDownloadResponseReader = new FileDownloadResponseReader();
 
+    private final Reader<ProxyReq> proxyRequestReader = new ProxyReqReader();
+
+    private boolean refillDownloadRes = false;
     private enum State {
         DONE, WAITING_FRAME, ERROR, REFILL
     };
@@ -40,10 +44,8 @@ public class TrameReader implements Reader<Trame> {
             throw new IllegalStateException();
         }
 
-        // Process the operation reader state;
-
-
         var opReaderState = opReader.process(buffer);
+
         switch (opReaderState) {
             case DONE:
                 var op = opReader.get();
@@ -177,19 +179,35 @@ public class TrameReader implements Reader<Trame> {
                         break;
 
                     case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE:
-
+                        System.out.println("file download response");
                         var fileDownloadResponseReaderState = fileDownloadResponseReader.process(buffer);
-
+                        System.out.println(fileDownloadResponseReaderState);
                         if (fileDownloadResponseReaderState == Reader.ProcessStatus.DONE) {
                             value = fileDownloadResponseReader.get();
                         } else if (fileDownloadResponseReaderState == Reader.ProcessStatus.ERROR) {
+                            System.out.println("error");
                             buffer.clear();
+                            return fileDownloadResponseReaderState;
+                        }else if (fileDownloadResponseReaderState == Reader.ProcessStatus.REFILL) {
+                            refillDownloadRes = true;
                             return fileDownloadResponseReaderState;
                         }
                         break;
 
+                    case ChatMessageProtocol.PROXY_REQUEST:
+                        System.out.println("proxy request");
+                        var proxyRequestReaderState = proxyRequestReader.process(buffer);
+
+                        if (proxyRequestReaderState == Reader.ProcessStatus.DONE) {
+                            value = proxyRequestReader.get();
+                        } else if (proxyRequestReaderState == Reader.ProcessStatus.ERROR) {
+                            buffer.clear();
+                            return proxyRequestReaderState;
+                        }
+                        break;
 
                     default:
+                        System.out.println("Unknown operation code");
                         state = State.ERROR;
                         return ProcessStatus.ERROR;
                 }
@@ -228,6 +246,7 @@ public class TrameReader implements Reader<Trame> {
         fileDownloadInfoResReader.reset();
         fileDownloadRequestReader.reset();
         fileDownloadResponseReader.reset();
+        proxyRequestReader.reset();
 
     }
 

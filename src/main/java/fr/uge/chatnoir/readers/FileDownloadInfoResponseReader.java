@@ -8,12 +8,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FileDownloadInfoResponseReader implements Reader<FileDownloadInfoRes> {
-    private enum State { DONE, WAITING_IP_NUMBER, WAITING_IPS, ERROR }
+    private enum State { DONE, WAITING_IP_NUMBER, WAITING_IPS, WAITING_ID,  ERROR }
     private State state = State.WAITING_IP_NUMBER;
     private final IntReader intReader = new IntReader();
     private final StringReader stringReader = new StringReader();
     private int ipsNumber;
     private List<String> ips = new ArrayList<String>();
+
+    private int id;
+
     private FileDownloadInfoRes value;
 
 
@@ -53,10 +56,26 @@ public class FileDownloadInfoResponseReader implements Reader<FileDownloadInfoRe
 
                 ips.add(stringReader.get());
                 stringReader.reset();
+                state = State.WAITING_ID;
             }
         }
-        value = new FileDownloadInfoRes(ips);
-        state = State.DONE;
+
+        if (state == State.WAITING_ID) {
+            var read = intReader.process(buffer);
+            if (read == ProcessStatus.ERROR) {
+                state = State.ERROR;
+                return ProcessStatus.ERROR;
+            }
+            if (read == ProcessStatus.REFILL) {
+                return ProcessStatus.REFILL;
+            }
+
+            id = intReader.get();
+            intReader.reset();
+            state = State.DONE;
+        }
+
+        value = new FileDownloadInfoRes(ips, id);
         return ProcessStatus.DONE;
     }
 

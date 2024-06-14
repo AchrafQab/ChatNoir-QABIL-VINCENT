@@ -8,6 +8,7 @@ import fr.uge.chatnoir.protocol.file.*;
 import fr.uge.chatnoir.protocol.message.PrivateMessage;
 import fr.uge.chatnoir.protocol.Reader;
 import fr.uge.chatnoir.protocol.message.PublicMessage;
+import fr.uge.chatnoir.protocol.proxy.ProxyReq;
 import fr.uge.chatnoir.readers.TrameReader;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -38,10 +40,11 @@ public class Client {
         private final ArrayDeque<Trame> queue = new ArrayDeque<>();
         private final Charset UTF8 = StandardCharsets.UTF_8;
         private final Reader<Trame> trameReader = new TrameReader();
-        private boolean closed = false;
+        public boolean closed = false;
         private List<FileInfo> files = new ArrayList<>();
 
-        private Context(SelectionKey key) {
+
+        public Context(SelectionKey key) {
             this.key = key;
             this.sc = (SocketChannel) key.channel();
         }
@@ -55,6 +58,7 @@ public class Client {
         private void processIn() {
             // TODO
             for (;;) {
+
                 Reader.ProcessStatus status = trameReader.process(bufferIn);
                 switch (status) {
                     case DONE:
@@ -63,7 +67,6 @@ public class Client {
                             case ChatMessageProtocol.AUTH_RESPONSE -> {
                                 if(((AuthResTrame) value).code() == 200){
                                     ((Client) key.attachment()).console.start();
-                                    ((Client) key.attachment()).clientServerStart.start();
                                 }else{
                                     System.out.println("Echec : "+((AuthResTrame) value).code());
                                 }
@@ -83,23 +86,30 @@ public class Client {
                             }
 
                             case ChatMessageProtocol.FILE_DOWNLOAD_INFO_RESPONSE -> {
-
-
-                                    ((Client) key.attachment()).connectToClientServer((FileDownloadInfoRes) value);
-
+                                System.out.println("File download info response => "+((FileDownloadInfoRes) value)  );
+                                  ((Client) key.attachment()).connectToClientServer((FileDownloadInfoRes) value);
                             }
 
                             case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE -> {
+
+
                                 System.out.println("File download response => "+((FileDownloadRes) value));
                                 ((Client) key.attachment()).createFile(((FileDownloadRes) value));
                                 silentlyClose();
+                            }
+
+                            case ChatMessageProtocol.PROXY_REQUEST -> {
+                                System.out.println("Proxy request => "+value);
+                                ((Client) key.attachment()).clientServer.applyProxy((ProxyReq) value);
                             }
                         }
                         trameReader.reset();
                         return;
                     case REFILL:
+                        System.out.println("refill");
                         return;
                     case ERROR:
+                        System.out.println("close in processIn");
                         silentlyClose();
                         return;
                 }
@@ -166,6 +176,9 @@ public class Client {
                 key.interestOps(ops);
             }
             else{
+
+                System.out.println("close in updateInterestOps");
+
                 silentlyClose();
             }
 
@@ -175,6 +188,7 @@ public class Client {
         private void silentlyClose() {
             System.out.println("silently close");
             try {
+                closed = true;
                 key.cancel();
                 sc.close();
             } catch (IOException e) {
@@ -208,6 +222,7 @@ public class Client {
 
         private void doWrite() throws IOException {
             // TODO
+            //System.out.println("doWrite");
             bufferOut.flip();
             sc.write(bufferOut);
             bufferOut.compact();
@@ -226,8 +241,6 @@ public class Client {
         }
     }
 
-
-
     private static int BUFFER_SIZE = 10_000;
     private static Logger logger = Logger.getLogger(Client.class.getName());
     private final ArrayBlockingQueue<Trame> blockQueue = new ArrayBlockingQueue<Trame>(10);
@@ -237,7 +250,6 @@ public class Client {
     private final String login;
     private Boolean running = true;
     private final Thread console;
-    private final Thread clientServerStart;
 
     private final Thread auth;
 
@@ -257,19 +269,18 @@ public class Client {
         this.console = Thread.ofPlatform().unstarted(this::consoleRun);
         this.auth = Thread.ofPlatform().unstarted(() -> {
             try {
-                sendCommand(new AuthReqTrame(login));
+                this.clientServer = new ClientServer();
+
+                sendCommand(new AuthReqTrame(login, clientServer.PORT));
+
+                clientServer.launch();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
-            }
-        });
-        this.clientServerStart = Thread.ofPlatform().unstarted(() -> {
-            try {
-                this.clientServer = new ClientServer();
-               clientServer.launch();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
+
     }
 
     private void consoleRun() {
@@ -306,38 +317,6 @@ public class Client {
                                 }
                             }
                             break;
-                        /*
-                        case "3":
-                            System.out.print("Entrez le path du fichier: ");
-                            var files = new ArrayList<FileInfo>();
-                            while (scanner.hasNextLine()) {
-                                System.out.print("Entrez le path du fichier: ");
-                                var path = scanner.nextLine();
-                                if(path.isEmpty()){
-                                    break;
-                                }
-                                //check if file exists
-                                var check = Path.of(path);
-                                if(!Files.exists(check)){
-                                    System.out.println("Fichier non trouvé");
-                                    continue;
-                                }
-                                var file = new FileInfo(check);
-                                files.add(file);
-
-
-
-                                //var file = new FileInfo(Path.of(path));
-                                //files.add(file);
-                            }
-                            if(!files.isEmpty()) {
-                                System.out.println(files);
-                                sendCommand(new FileShare(files, clientServer.PORT));
-                            }
-
-                            break;
-
-                         */
                         case "3":
                         String basePath = "src/main/resources/upload/";
                         var files = new ArrayList<FileInfo>();
@@ -434,17 +413,6 @@ public class Client {
 
     }
 
-    private void sendCommandPeer(Trame trame, BlockingQueue<Trame> blockQueue) throws InterruptedException {
-        // TODO
-        Objects.requireNonNull(trame);
-        synchronized (lockPeer) {
-            System.out.println("send command ==> "+trame);
-            blockQueue.add(trame);
-            selector.wakeup();
-        }
-
-    }
-
     /**
      * Processes the command from the BlockingQueue
      */
@@ -476,8 +444,6 @@ public class Client {
         }
 
     }
-
-
 
     public void launch() throws IOException {
         sc.configureBlocking(false);
@@ -517,15 +483,15 @@ public class Client {
     private void treatKeyPeer(SelectionKey key, Context context) {
         try {
             if (key.isValid() && key.isConnectable()) {
-                System.out.println("doConnect");
+                //System.out.println("doConnect");
                 context.doConnect();
             }
             if (key.isValid() && key.isWritable()) {
-                System.out.println("doWrite");
+                //System.out.println("doWrite");
                 context.doWrite();
             }
             if (key.isValid() && key.isReadable()) {
-                System.out.println("doRead");
+                //System.out.println("doRead");
                 context.doRead();
             }
 
@@ -536,25 +502,18 @@ public class Client {
         }
     }
 
-
-
-    private void silentlyClose(SelectionKey key) {
-        Channel sc = (Channel) key.channel();
-        try {
-            sc.close();
-        } catch (IOException e) {
-            // ignore exception
-        }
-    }
     public void createFile(FileDownloadRes trame) {
-
-        // Créez un chemin de fichier dans le répertoire actuel
-        Path filePath = Path.of("C:/Users/jjlac/OneDrive/Bureau/projet/ChatNoir-QABIL-VINCENT/src/main/java/fr/uge/chatnoir/download/"+trame.title());
-
+        Path filePath = Paths.get("C:/Users/jjlac/OneDrive/Bureau/projet/ChatNoir-QABIL-VINCENT/src/main/java/fr/uge/chatnoir/download/", trame.title());
 
         try {
             // Écrivez le contenu dans le nouveau fichier
-            Files.write(filePath, trame.content().getBytes(), StandardOpenOption.CREATE_NEW);
+            byte[] content = trame.content();
+
+            // Vérification de la longueur du contenu
+            System.out.println("Content length: " + content.length);
+
+            // Écrivez le contenu dans le nouveau fichier
+            Files.write(filePath, content, StandardOpenOption.CREATE_NEW);
 
             System.out.println("Fichier créé : " + filePath.toAbsolutePath());
         } catch (IOException e) {
@@ -564,7 +523,7 @@ public class Client {
 
     }
 
-    private void connectToClientServer(FileDownloadInfoRes trame) {
+    public void connectToClientServer(FileDownloadInfoRes trame) {
         System.out.println("Connecting to client server...");
         for (String ipPort : trame.ips()) {
 
@@ -578,12 +537,14 @@ public class Client {
                     var context = new Context(key);
                     key.attach(this);
                     clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
-                    sendCommand(new FileDownloadReq(requestedFile, 0, requestedFile.size));
+                    sendCommand(new FileDownloadReq(requestedFile, 0, requestedFile.size, trame.id()));
                     System.out.println("Waiting for client server response...");
                     while (!context.closed) {
                             selector.select(k -> treatKeyPeer(k, context));
                             processCommandsPeer(context);
+
                     }
+                    System.out.println("Client server connection closed");
                 } catch (IOException e) {
                     System.err.println("Failed to connect to client server: " + e.getMessage());
                 } catch (NumberFormatException e) {
@@ -594,19 +555,13 @@ public class Client {
         }
     }
 
-
     public static void main(String[] args) throws NumberFormatException, IOException {
         if (args.length != 3) {
             usage();
             return;
         }
-
-
-
         new Client(args[0], new InetSocketAddress(args[1], Integer.parseInt(args[2]))).launch();
-
     }
-
 
 
     private static void usage() {

@@ -23,7 +23,7 @@ public class ClientSession {
     private final SelectionKey key;
     public final SocketChannel sc;
     private final ByteBuffer bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
-    private final ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
+    private ByteBuffer bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
     private final Queue<Trame> queue = new ArrayDeque<>();
     public String nickname;
     private boolean registered = false;
@@ -73,7 +73,10 @@ public class ClientSession {
                         case ChatMessageProtocol.FILE_DOWNLOAD_REQUEST -> {
                             clientServer.sendFile(((FileDownloadReq) trame), this);
                         }
-
+                        case ChatMessageProtocol.FILE_DOWNLOAD_RESPONSE -> {
+                            clientServer.retransmit(((FileDownloadRes) trame));
+                            silentlyClose(key);
+                        }
                     }
                     return;
                 case REFILL:
@@ -96,6 +99,8 @@ public class ClientSession {
 
 
     public void queueTrame(Trame trame) {
+
+
         queue.add(trame);
         processOut();
         updateInterestOps();
@@ -105,19 +110,31 @@ public class ClientSession {
         while (!queue.isEmpty()) {
             var trame = queue.peek();
             var bbMsg = trame.toByteBuffer(UTF_8);
-            if(bufferOut.remaining() >= bbMsg.remaining()) {
-                queue.poll();
-                System.out.println("==> send "+trame +" -- "+trame.protocol());
-                bufferOut.putInt(trame.protocol());
-                bufferOut.put(bbMsg);
 
-            }else {
-                break;
+            if (bufferOut.remaining() < Integer.BYTES + bbMsg.remaining()) {
+                increaseBufferSize(Integer.BYTES + bbMsg.remaining());
             }
+
+            queue.poll();
+            System.out.println("==> send " + trame + " -- " + trame.protocol());
+            bufferOut.putInt(trame.protocol());
+            bufferOut.put(bbMsg);
         }
     }
+    private void increaseBufferSize(int requiredCapacity) {
+        int newCapacity = bufferOut.capacity();
+        while (newCapacity < bufferOut.position() + requiredCapacity) {
+            newCapacity *= 2;
+        }
 
+        ByteBuffer newBuffer = ByteBuffer.allocate(newCapacity);
+        bufferOut.flip();
+        newBuffer.put(bufferOut);
+        bufferOut = newBuffer;
+    }
     private void updateInterestOps() {
+
+        System.out.println("update interest ops");
         int ops = 0;
         if (bufferIn.hasRemaining()) {
             ops |= SelectionKey.OP_READ;
