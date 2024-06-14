@@ -41,7 +41,6 @@ public class Client {
         private boolean closed = false;
         private List<FileInfo> files = new ArrayList<>();
 
-
         private Context(SelectionKey key) {
             this.key = key;
             this.sc = (SocketChannel) key.channel();
@@ -134,7 +133,6 @@ public class Client {
                 var bbMsg = trame.toByteBuffer(UTF8);
                 if(bufferOut.remaining() >= bbMsg.remaining()) {
                     queue.poll();
-                    // System.out.println("in buffer ==> "+trame +" -- "+trame.protocol());
                     bufferOut.putInt(trame.protocol());
                     bufferOut.put(bbMsg);
 
@@ -436,7 +434,7 @@ public class Client {
 
     }
 
-    private void sendCommandPeer(Trame trame, BlockingQueue<Trame> blockQueue, Selector selector) throws InterruptedException {
+    private void sendCommandPeer(Trame trame, BlockingQueue<Trame> blockQueue) throws InterruptedException {
         // TODO
         Objects.requireNonNull(trame);
         synchronized (lockPeer) {
@@ -465,7 +463,7 @@ public class Client {
 
     }
 
-    private void processCommandsPeer(Context context, BlockingQueue<Trame> blockQueue) {
+    private void processCommandsPeer(Context context) {
         // TODO
 
         synchronized(lockPeer) {
@@ -488,7 +486,6 @@ public class Client {
         key.attach(this);
         sc.connect(serverAddress);
         auth.start();
-        //console.start();
 
         while (!Thread.interrupted() && running) {
             try {
@@ -520,12 +517,15 @@ public class Client {
     private void treatKeyPeer(SelectionKey key, Context context) {
         try {
             if (key.isValid() && key.isConnectable()) {
+                System.out.println("doConnect");
                 context.doConnect();
             }
             if (key.isValid() && key.isWritable()) {
+                System.out.println("doWrite");
                 context.doWrite();
             }
             if (key.isValid() && key.isReadable()) {
+                System.out.println("doRead");
                 context.doRead();
             }
 
@@ -563,62 +563,12 @@ public class Client {
 
 
     }
-    /*
-    private void connectToClientServer(FileDownloadInfoRes trame) {
-        System.out.println("Connecting to client server...");
-
-            System.out.println("check 0"+ trame);
-            for (String ipPort : trame.ips()) {
-                Thread downloadThread = Thread.ofPlatform().start(() -> {
-                    try {
-                        System.out.println("check 1" + trame);
-                        System.out.println("Connecting to client server: " + ipPort);
-                        String[] parts = ipPort.split(":");
-                        SocketChannel clientChannel = SocketChannel.open();
-                        Selector selector = Selector.open();
-                        clientChannel.configureBlocking(false);
-                        var key = clientChannel.register(selector, SelectionKey.OP_CONNECT);
-                        var context = new Context(key);
-                        key.attach(this);
-                        clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
-                        var blockQueue = new ArrayBlockingQueue<Trame>(10);
-                        sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size), blockQueue, selector);
-                        while (!Thread.interrupted() && running) {
-                            try {
-                                System.out.println("Waiting for client server response...");
-                                selector.select(k -> treatKeyPeer(k, context));
-                                processCommandsPeer(context, blockQueue);
-                            } catch (UncheckedIOException tunneled) {
-                                throw tunneled.getCause();
-                            }
-                        }
-                    } catch (IOException e) {
-                        System.err.println("Failed to connect to client server: " + e.getMessage());
-                    } catch (NumberFormatException e) {
-                        System.err.println("Invalid port number: " + e.getMessage());
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-
-            }
-
-    }
-
-     */
-
 
     private void connectToClientServer(FileDownloadInfoRes trame) {
         System.out.println("Connecting to client server...");
-        System.out.println("check 0" + trame);
+        for (String ipPort : trame.ips()) {
 
-        // Utilisez une copie de la liste pour éviter ConcurrentModificationException
-        List<String> ipsCopy = new ArrayList<>(trame.ips());
-
-        for (String ipPort : ipsCopy) {
-            Thread downloadThread = Thread.ofPlatform().start(() -> {
                 try {
-                    System.out.println("check 1" + trame);
                     System.out.println("Connecting to client server: " + ipPort);
                     String[] parts = ipPort.split(":");
                     SocketChannel clientChannel = SocketChannel.open();
@@ -628,16 +578,11 @@ public class Client {
                     var context = new Context(key);
                     key.attach(this);
                     clientChannel.connect(new InetSocketAddress(parts[0], Integer.parseInt(parts[1])));
-                    var blockQueue = new ArrayBlockingQueue<Trame>(10);
-                    sendCommandPeer(new FileDownloadReq(requestedFile, 0, requestedFile.size), blockQueue, selector);
-                    while (!Thread.interrupted() && running) {
-                        try {
-                            System.out.println("Waiting for client server response...");
+                    sendCommand(new FileDownloadReq(requestedFile, 0, requestedFile.size));
+                    System.out.println("Waiting for client server response...");
+                    while (!context.closed) {
                             selector.select(k -> treatKeyPeer(k, context));
-                            processCommandsPeer(context, blockQueue);
-                        } catch (UncheckedIOException tunneled) {
-                            throw tunneled.getCause();
-                        }
+                            processCommandsPeer(context);
                     }
                 } catch (IOException e) {
                     System.err.println("Failed to connect to client server: " + e.getMessage());
@@ -646,7 +591,6 @@ public class Client {
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-            });
         }
     }
 
