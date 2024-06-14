@@ -157,7 +157,7 @@ public class Server {
         synchronized (lock) {
             FileInfo fileInfo = trame.fileInfo();
             var downloadMode = trame.downloadMode();
-            int id = new Random().nextInt(Integer.MAX_VALUE);
+            int id = new Random().nextInt(1000);
                 HashMap<ClientSession, Integer> clientsOfFile = fileRegistry.get(fileInfo);
                 if (clientsOfFile == null) {
                     clientSession.queueTrame(new FileDownloadInfoRes(new ArrayList<>(), 0));

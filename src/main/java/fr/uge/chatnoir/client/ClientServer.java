@@ -95,11 +95,11 @@ public class ClientServer {
     public void sendFile(FileDownloadReq trame, ClientSession clientSession) {
 
         System.out.println("send file => "+ trame);
-
+        System.out.println("proxy list => "+proxyList);
         for (ProxyReq proxyReq : proxyList) {
             try {
                 String clientIp = ((InetSocketAddress) clientSession.sc.getRemoteAddress()).getAddress().getHostAddress();
-                if (proxyReq.ipSource().equals(clientIp) && proxyReq.id() == trame.id()) {
+                if (proxyReq.id() == trame.id()) {
                     System.out.println("Proxy found for client " + clientIp + " with ID " + proxyReq.id());
                     proxyMap.put(clientSession, proxyReq.id());
                     connectToClientServer(proxyReq.ipDest(), proxyReq.portDest(), trame);
@@ -109,8 +109,6 @@ public class ClientServer {
               System.err.println("Erreur lors de la récupération de l'adresse IP du client : " + e.getMessage());
             }
         }
-
-
 
         var file = new File("src/main/resources/upload/"+trame.fileInfo().title);
 
